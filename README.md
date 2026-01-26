@@ -4,9 +4,13 @@
 
 ## 🌐 在线演示
 
-**Demo 地址：** [点击访问](https://your-demo.vercel.app)
+**Demo 地址：** [https://short-drama-platform-demo.vercel.app](https://short-drama-platform-demo.vercel.app)
 
-> 💡 建议使用 Chrome 浏览器，缩放至 80% 以获得最佳体验
+> 💡 **重要提示：** 
+> - 推荐使用 Chrome 浏览器
+> - **请将浏览器缩放至 80%** 以获得最佳体验
+> - 快捷键：`Ctrl + -` (Windows) 或 `Cmd + -` (Mac)
+> - 或点击浏览器地址栏右侧的缩放按钮调整
 
 ## ✨ 核心功能
 
@@ -112,5 +116,5 @@ short-drama-platform/
 ---
 
 **版本：** v1.0.0  
-**更新日期：** 2024-01-26  
+**更新日期：** 2026-01-26  
 **许可证：** MIT

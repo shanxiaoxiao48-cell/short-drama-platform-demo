@@ -114,27 +114,23 @@ export function EpisodeSelectorPanel({
 
   return (
     <div className="flex flex-col h-full bg-card border-l border-border">
-      {/* Header - 固定 */}
-      <div className="p-4 border-b border-border shrink-0">
-        <h4 className="text-sm font-medium text-foreground mb-2">
-          选集 <span className="text-xs text-muted-foreground">({totalEpisodes}集全)</span>
+      {/* Header - 与术语表标题保持一致 */}
+      <div className="px-3 py-2 border-b border-border shrink-0">
+        <h4 className="text-sm font-medium text-foreground">
+          选集 <span className="text-xs text-muted-foreground">({totalEpisodes}集)</span>
         </h4>
       </div>
 
       {/* Scrollable area - 占据剩余空间 */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
-        <div className="p-4 space-y-4">
+        <div className="p-2 space-y-3">
           {/* 集数选择 */}
           <div>
             <div 
               className={cn(
-                "grid grid-cols-5 gap-2",
-                showAll && "max-h-[400px] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-muted [&::-webkit-scrollbar-thumb]:bg-black [&::-webkit-scrollbar-thumb]:dark:bg-gray-800 [&::-webkit-scrollbar-thumb]:rounded-full"
+                "grid grid-cols-5 gap-1.5",
+                showAll && "max-h-[400px] overflow-y-auto"
               )}
-              style={showAll ? {
-                scrollbarWidth: 'thin',
-                scrollbarColor: '#000000 #e5e7eb'
-              } as React.CSSProperties : undefined}
             >
               {visibleEpisodes.map((ep, index) => {
                 if (ep === -1) {
@@ -144,7 +140,7 @@ export function EpisodeSelectorPanel({
                       key={`ellipsis-${index}`}
                       variant="outline"
                       size="sm"
-                      className="h-10 w-10 aspect-square p-0 text-xs"
+                      className="h-8 w-8 aspect-square p-0 text-[10px]"
                       onClick={() => handleEpisodeClick(ep, index)}
                     >
                       <ChevronDown className="w-3 h-3" />
@@ -161,7 +157,7 @@ export function EpisodeSelectorPanel({
                     variant={isCurrent ? "default" : "outline"}
                     size="sm"
                     className={cn(
-                      "h-10 w-10 aspect-square p-0 text-xs relative transition-all",
+                      "h-8 w-8 aspect-square p-0 text-[10px] relative transition-all",
                       isCompleted && !isCurrent && showCompletedMarks && "border-success text-success",
                       !isCurrent && "hover:border-primary hover:border-2"
                     )}
@@ -169,7 +165,7 @@ export function EpisodeSelectorPanel({
                   >
                     {ep}
                     {isCompleted && showCompletedMarks && (
-                      <Check className="w-2 h-2 absolute top-0.5 right-0.5" />
+                      <Check className="w-1.5 h-1.5 absolute top-0 right-0" />
                     )}
                   </Button>
                 )
@@ -181,7 +177,7 @@ export function EpisodeSelectorPanel({
               <Button
                 variant="ghost"
                 size="sm"
-                className="w-full mt-2"
+                className="w-full mt-2 h-7 text-[10px]"
                 onClick={toggleShowAll}
               >
                 {showAll ? (
@@ -203,13 +199,13 @@ export function EpisodeSelectorPanel({
           {/* 字幕样式调节 - 根据 showStylePanel 控制显示 */}
           {showStylePanel && (
             <div>
-              <h4 className="text-xs font-medium text-foreground mb-3">字幕样式</h4>
+              <h4 className="text-[10px] font-medium text-foreground mb-2">字幕样式</h4>
               
               {/* Font size */}
-              <div className="space-y-2 mb-4">
+              <div className="space-y-1.5 mb-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs">字体大小</Label>
-                  <span className="text-xs text-muted-foreground">{subtitleStyle.fontSize}px</span>
+                  <Label className="text-[10px]">字体大小</Label>
+                  <span className="text-[10px] text-muted-foreground">{subtitleStyle.fontSize}px</span>
                 </div>
                 <Slider
                   value={[subtitleStyle.fontSize]}
@@ -224,10 +220,10 @@ export function EpisodeSelectorPanel({
               </div>
 
               {/* Vertical position */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs">垂直位置</Label>
-                  <span className="text-xs text-muted-foreground">{subtitleStyle.verticalPosition}%</span>
+                  <Label className="text-[10px]">垂直位置</Label>
+                  <span className="text-[10px] text-muted-foreground">{subtitleStyle.verticalPosition}%</span>
                 </div>
                 <Slider
                   value={[subtitleStyle.verticalPosition]}

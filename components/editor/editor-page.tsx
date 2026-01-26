@@ -656,10 +656,10 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
         </div>
       </header>
 
-      {/* Main Content - 70% height */}
-      <div className="flex overflow-hidden" style={{ height: "calc(70vh - 56px)" }}>
-        {/* Left - Video Player */}
-        <div className="w-80 shrink-0 border-r border-border overflow-hidden">
+      {/* Main Content - 所有面板按比例缩放 */}
+      <div className="flex" style={{ height: "calc(70vh - 56px)" }}>
+        {/* Left - Video Player - 20% 宽度 */}
+        <div className="shrink-0 border-r border-border overflow-hidden" style={{ width: "20%", minWidth: "240px" }}>
           <VideoPlayerPanel
             posterImage={projectData.image}
             currentTime={currentTime}
@@ -673,8 +673,8 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
           />
         </div>
 
-        {/* Center - Subtitle Dual Panel - 拉宽 */}
-        <div className="flex-1 overflow-hidden min-w-0 border-r border-border">
+        {/* Center - Subtitle Dual Panel - 25% 宽度，自动填充 */}
+        <div className="flex-1 overflow-y-auto min-w-0 border-r border-border" style={{ minWidth: "300px" }}>
           <SubtitleDualPanel
             subtitles={subtitles}
             currentTime={currentTime}
@@ -697,8 +697,8 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
           />
         </div>
 
-        {/* Center Right - 画面字 */}
-        <div className="w-72 shrink-0">
+        {/* Center Right - 画面字 - 15% 宽度 */}
+        <div className="shrink-0 overflow-y-auto border-r border-border" style={{ width: "15%", minWidth: "180px" }}>
           <OnScreenTextPanel
             currentTime={currentTime}
             onScreenText={hasData ? mockOnScreenText : []}
@@ -707,8 +707,8 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
           />
         </div>
 
-        {/* Right Center - 术语表 */}
-        <div className="w-72 shrink-0">
+        {/* Right Center - 术语表 - 15% 宽度 */}
+        <div className="shrink-0 overflow-y-auto border-r border-border" style={{ width: "15%", minWidth: "180px" }}>
           <GlossaryPanel 
             isReadOnly={isReadOnly} 
             isPending={isPending} 
@@ -717,8 +717,8 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
           />
         </div>
 
-        {/* Right - Episode Selector & Style Panel */}
-        <div className="w-72 shrink-0">
+        {/* Right - Episode Selector & Style Panel - 15% 宽度 */}
+        <div className="shrink-0 overflow-y-auto" style={{ width: "15%", minWidth: "180px" }}>
           <EpisodeSelectorPanel
             currentEpisode={currentEpisode}
             totalEpisodes={totalEpisodes}
@@ -735,8 +735,8 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
         </div>
       </div>
 
-      {/* Timeline Panel - 30% height */}
-      <div className="shrink-0 border-t border-border" style={{ height: "30vh" }}>
+      {/* Timeline Panel */}
+      <div className="border-t border-border" style={{ height: "30vh" }}>
         <TimelinePanel
           originalSubtitles={originalBlocks}
           translatedSubtitles={showTranslation ? translatedBlocks : []}
