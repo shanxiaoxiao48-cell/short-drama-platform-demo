@@ -27,8 +27,8 @@ export const ROLE_NAMES: Record<UserRole, string> = {
 
 // 菜单权限配置
 const MENU_PERMISSIONS: Record<UserRole, string[]> = {
-  admin: ['dashboard', 'projects', 'materials', 'tasks', 'task_assign', 'review', 'settings'],
-  project_manager: ['dashboard', 'projects', 'materials', 'tasks', 'task_assign', 'review', 'settings'],
+  admin: ['dashboard', 'analytics', 'projects', 'materials', 'tasks', 'task_assign', 'review', 'settings'],
+  project_manager: ['dashboard', 'analytics', 'projects', 'materials', 'tasks', 'task_assign', 'review', 'settings'],
   material_handler: ['dashboard', 'projects', 'materials', 'settings'],
   translator: ['dashboard', 'projects', 'tasks', 'settings'],
   quality_checker: ['dashboard', 'projects', 'tasks', 'review', 'settings'],

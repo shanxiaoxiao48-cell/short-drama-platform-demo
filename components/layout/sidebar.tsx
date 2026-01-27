@@ -16,6 +16,7 @@ import {
   UserCheck,
   FileCheck,
   Shield,
+  BarChart3,
 } from "lucide-react"
 import { usePermission } from "@/contexts/permission-context"
 import {
@@ -27,7 +28,7 @@ import {
 } from "@/components/ui/select"
 import { ROLE_NAMES, UserRole } from "@/lib/permissions"
 
-export type PageType = "dashboard" | "projects" | "workspace" | "editor" | "tasks" | "novels"
+export type PageType = "dashboard" | "projects" | "workspace" | "editor" | "tasks" | "novels" | "analytics"
 
 interface SidebarProps {
   currentPage: PageType
@@ -51,6 +52,12 @@ const navItems: NavItem[] = [
     menuId: "dashboard",
     label: "首页", 
     icon: LayoutDashboard 
+  },
+  { 
+    id: "analytics",
+    menuId: "analytics",
+    label: "仪表盘", 
+    icon: BarChart3 
   },
   { 
     id: "projects",

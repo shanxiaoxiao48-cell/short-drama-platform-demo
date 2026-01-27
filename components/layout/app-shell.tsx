@@ -7,6 +7,7 @@ import { ProjectsPage } from "@/components/projects/projects-page"
 import { WorkspacePage } from "@/components/workspace/workspace-page"
 import { EditorPage } from "@/components/editor/editor-page"
 import { TasksPage } from "@/components/tasks/tasks-page"
+import { AnalyticsDashboard } from "@/components/analytics/analytics-dashboard"
 import {
   TaskListPage,
   AIExtractDetailPage,
@@ -276,6 +277,8 @@ export function AppShell({ initialPage = "dashboard" }: AppShellProps) {
     switch (currentPage) {
       case "dashboard":
         return <Dashboard onOpenWorkspace={handleOpenWorkspace} onNavigateToProjects={handleNavigateToProjects} />
+      case "analytics":
+        return <AnalyticsDashboard />
       case "projects":
         return <ProjectsPage onOpenWorkspace={handleOpenWorkspace} />
       case "workspace":
