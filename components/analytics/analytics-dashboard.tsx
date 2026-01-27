@@ -95,20 +95,119 @@ const mockProjects = [
 ]
 
 export function AnalyticsDashboard() {
+  // 筛选器状态
+  const [selectedDrama, setSelectedDrama] = useState("all")
   const [selectedLanguage, setSelectedLanguage] = useState("all")
+  const [selectedTranslator, setSelectedTranslator] = useState("all")
   const [selectedPeriod, setSelectedPeriod] = useState("month")
+
+  // 根据筛选条件计算概览数据
+  const getOverviewData = () => {
+    // 总体看板
+    if (selectedDrama === "all" && selectedLanguage === "all" && selectedTranslator === "all") {
+      return {
+        card1: { title: "进行中短剧", value: "24", subtitle: "+3 较上周", icon: Activity },
+        card2: { title: "活跃译员", value: "18", subtitle: "平均质量评级: A", icon: Users },
+        card3: { title: "本月翻译时长", value: "13,600", subtitle: "分钟 · +12%", icon: Clock },
+        card4: { title: "本月总成本", value: "¥27,200", subtitle: "平均 ¥2/分钟", icon: DollarSign },
+      }
+    }
+    // 剧维度
+    else if (selectedDrama !== "all" && selectedLanguage === "all" && selectedTranslator === "all") {
+      return {
+        card1: { title: "进行中语种", value: "3", subtitle: "英语、西班牙语、日语", icon: Activity },
+        card2: { title: "累计翻译时长", value: "2,400", subtitle: "分钟 · 进度 63%", icon: Clock },
+        card3: { title: "总成本", value: "¥4,720", subtitle: "平均 ¥2/分钟", icon: DollarSign },
+        card4: { title: "平均ROI", value: "3.1x", subtitle: "投放消耗 ¥14,720", icon: Activity },
+      }
+    }
+    // 译员维度
+    else if (selectedDrama === "all" && selectedLanguage === "all" && selectedTranslator !== "all") {
+      const translator = mockTranslators.find(t => t.id === selectedTranslator)
+      return {
+        card1: { title: "参与短剧", value: "5", subtitle: "部", icon: Activity },
+        card2: { title: "累计翻译时长", value: translator?.totalMinutes.toLocaleString() || "0", subtitle: "分钟", icon: Clock },
+        card3: { title: "总成本", value: `¥${translator?.cost.toLocaleString()}`, subtitle: "平均 ¥2/分钟", icon: DollarSign },
+        card4: { title: "质量评级", value: translator?.qualityRating || "A", subtitle: `修改率 ${translator?.modificationRate}%`, icon: Users },
+      }
+    }
+    // 语种维度
+    else if (selectedDrama === "all" && selectedLanguage !== "all" && selectedTranslator === "all") {
+      return {
+        card1: { title: "项目数", value: "15", subtitle: "个项目", icon: Activity },
+        card2: { title: "参与译员", value: "6", subtitle: "人", icon: Users },
+        card3: { title: "累计翻译时长", value: "5,200", subtitle: "分钟", icon: Clock },
+        card4: { title: "总成本", value: "¥10,400", subtitle: "平均 ¥2/分钟", icon: DollarSign },
+      }
+    }
+    // 默认
+    return {
+      card1: { title: "进行中短剧", value: "24", subtitle: "+3 较上周", icon: Activity },
+      card2: { title: "活跃译员", value: "18", subtitle: "平均质量评级: A", icon: Users },
+      card3: { title: "本月翻译时长", value: "13,600", subtitle: "分钟 · +12%", icon: Clock },
+      card4: { title: "本月总成本", value: "¥27,200", subtitle: "平均 ¥2/分钟", icon: DollarSign },
+    }
+  }
+
+  const overviewData = getOverviewData()
 
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b border-border">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">数据仪表盘</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            翻译项目监控、译员绩效评估与成本分析
-          </p>
+      <div className="p-6 border-b border-border space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">数据仪表盘</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              灵活筛选，多维度查看翻译数据
+            </p>
+          </div>
+          <Button variant="outline" size="sm">
+            <Download className="w-4 h-4 mr-2" />
+            导出报表
+          </Button>
         </div>
-        <div className="flex items-center gap-3">
+        
+        {/* 筛选器 */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <Select value={selectedDrama} onValueChange={setSelectedDrama}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="选择短剧" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部短剧</SelectItem>
+              <SelectItem value="1">霸道总裁爱上我</SelectItem>
+              <SelectItem value="2">穿越之王妃驾到</SelectItem>
+              <SelectItem value="3">重生之豪门千金</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="选择语种" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部语种</SelectItem>
+              <SelectItem value="en">英语</SelectItem>
+              <SelectItem value="es">西班牙语</SelectItem>
+              <SelectItem value="pt">葡萄牙语</SelectItem>
+              <SelectItem value="ja">日语</SelectItem>
+              <SelectItem value="ko">韩语</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={selectedTranslator} onValueChange={setSelectedTranslator}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="选择译员" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部译员</SelectItem>
+              <SelectItem value="1">张三</SelectItem>
+              <SelectItem value="2">李四</SelectItem>
+              <SelectItem value="3">王五</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
             <SelectTrigger className="w-32">
               <SelectValue />
@@ -120,69 +219,31 @@ export function AnalyticsDashboard() {
               <SelectItem value="year">本年</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            导出报表
-          </Button>
         </div>
       </div>
 
       {/* Content */}
       <ScrollArea className="flex-1">
         <div className="p-6 space-y-6">
-          {/* Overview Cards */}
+          {/* Overview Cards - 动态显示 */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">进行中项目</CardTitle>
-                <Activity className="w-4 h-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">24</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  <span className="text-green-600">+3</span> 较上周
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">活跃译员</CardTitle>
-                <Users className="w-4 h-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">18</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  平均质量评级: <span className="text-primary font-medium">A</span>
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">本月翻译时长</CardTitle>
-                <Clock className="w-4 h-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">13,600</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  分钟 · <span className="text-green-600">+12%</span>
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">本月成本</CardTitle>
-                <DollarSign className="w-4 h-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">¥27,200</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  平均 ¥2/分钟
-                </p>
-              </CardContent>
-            </Card>
+            {Object.values(overviewData).map((card, index) => {
+              const Icon = card.icon
+              return (
+                <Card key={index}>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
+                    <Icon className="w-4 h-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{card.value}</div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {card.subtitle}
+                    </p>
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
 
           {/* Main Tabs */}
