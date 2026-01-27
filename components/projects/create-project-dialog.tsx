@@ -174,6 +174,8 @@ export function CreateProjectDialog({ open, onOpenChange, onProjectCreated }: Cr
       languageCount: 1, // 默认只有源语言
       remark: "",
       createdAt: new Date().toISOString().split('T')[0],
+      image: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400&h=400&fit=crop", // 默认占位图
+      poster: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400&h=400&fit=crop", // 默认占位图
     }
     
     // Call onProjectCreated callback if provided
