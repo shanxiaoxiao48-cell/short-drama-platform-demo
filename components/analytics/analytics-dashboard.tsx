@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -23,50 +23,16 @@ import {
   Star,
   Activity,
 } from "lucide-react"
+import { SearchableSelect, type SearchableSelectOption } from "@/components/ui/searchable-select"
+import {
+  aggregateAnalyticsData,
+  generateOverviewCards,
+  updateFilterOptions,
+  type FilterConditions
+} from "@/lib/analytics-utils"
+import { mockRawAnalyticsData, mockTranslators } from "@/lib/mock-analytics-data"
 
-// 模拟数据
-const mockTranslators = [
-  {
-    id: "1",
-    name: "张三",
-    languages: ["英语", "西班牙语"],
-    totalMinutes: 4800,
-    modificationRate: 12.5,
-    selfModificationRate: 8.3,
-    qualityRating: "A",
-    specialties: ["古装", "现代"],
-    completedTasks: 45,
-    avgCompletionTime: 106,
-    cost: 9600,
-  },
-  {
-    id: "2",
-    name: "李四",
-    languages: ["日语", "韩语"],
-    totalMinutes: 3600,
-    modificationRate: 18.2,
-    selfModificationRate: 12.1,
-    qualityRating: "B",
-    specialties: ["现代", "男频"],
-    completedTasks: 32,
-    avgCompletionTime: 112,
-    cost: 7200,
-  },
-  {
-    id: "3",
-    name: "王五",
-    languages: ["英语", "法语"],
-    totalMinutes: 5200,
-    modificationRate: 9.8,
-    selfModificationRate: 6.2,
-    qualityRating: "A+",
-    specialties: ["古装", "女频"],
-    completedTasks: 52,
-    avgCompletionTime: 100,
-    cost: 10400,
-  },
-]
-
+// 为了兼容现有代码，保留mockProjects
 const mockProjects = [
   {
     id: "1",
@@ -101,55 +67,80 @@ export function AnalyticsDashboard() {
   const [selectedTranslator, setSelectedTranslator] = useState("all")
   const [selectedPeriod, setSelectedPeriod] = useState("month")
 
-  // 根据筛选条件计算概览数据
-  const getOverviewData = () => {
-    // 总体看板
-    if (selectedDrama === "all" && selectedLanguage === "all" && selectedTranslator === "all") {
-      return {
-        card1: { title: "进行中短剧", value: "24", subtitle: "+3 较上周", icon: Activity },
-        card2: { title: "活跃译员", value: "18", subtitle: "平均质量评级: A", icon: Users },
-        card3: { title: "本月翻译时长", value: "13,600", subtitle: "分钟 · +12%", icon: Clock },
-        card4: { title: "本月总成本", value: "¥27,200", subtitle: "平均 ¥2/分钟", icon: DollarSign },
-      }
-    }
-    // 剧维度
-    else if (selectedDrama !== "all" && selectedLanguage === "all" && selectedTranslator === "all") {
-      return {
-        card1: { title: "进行中语种", value: "3", subtitle: "英语、西班牙语、日语", icon: Activity },
-        card2: { title: "累计翻译时长", value: "2,400", subtitle: "分钟 · 进度 63%", icon: Clock },
-        card3: { title: "总成本", value: "¥4,720", subtitle: "平均 ¥2/分钟", icon: DollarSign },
-        card4: { title: "平均ROI", value: "3.1x", subtitle: "投放消耗 ¥14,720", icon: Activity },
-      }
-    }
-    // 译员维度
-    else if (selectedDrama === "all" && selectedLanguage === "all" && selectedTranslator !== "all") {
-      const translator = mockTranslators.find(t => t.id === selectedTranslator)
-      return {
-        card1: { title: "参与短剧", value: "5", subtitle: "部", icon: Activity },
-        card2: { title: "累计翻译时长", value: translator?.totalMinutes.toLocaleString() || "0", subtitle: "分钟", icon: Clock },
-        card3: { title: "总成本", value: `¥${translator?.cost.toLocaleString()}`, subtitle: "平均 ¥2/分钟", icon: DollarSign },
-        card4: { title: "质量评级", value: translator?.qualityRating || "A", subtitle: `修改率 ${translator?.modificationRate}%`, icon: Users },
-      }
-    }
-    // 语种维度
-    else if (selectedDrama === "all" && selectedLanguage !== "all" && selectedTranslator === "all") {
-      return {
-        card1: { title: "项目数", value: "15", subtitle: "个项目", icon: Activity },
-        card2: { title: "参与译员", value: "6", subtitle: "人", icon: Users },
-        card3: { title: "累计翻译时长", value: "5,200", subtitle: "分钟", icon: Clock },
-        card4: { title: "总成本", value: "¥10,400", subtitle: "平均 ¥2/分钟", icon: DollarSign },
-      }
-    }
-    // 默认
-    return {
-      card1: { title: "进行中短剧", value: "24", subtitle: "+3 较上周", icon: Activity },
-      card2: { title: "活跃译员", value: "18", subtitle: "平均质量评级: A", icon: Users },
-      card3: { title: "本月翻译时长", value: "13,600", subtitle: "分钟 · +12%", icon: Clock },
-      card4: { title: "本月总成本", value: "¥27,200", subtitle: "平均 ¥2/分钟", icon: DollarSign },
-    }
-  }
+  // 可用选项（根据选择的短剧动态更新）
+  const [availableLanguages, setAvailableLanguages] = useState<Array<{ code: string; name: string }>>([])
+  const [availableTranslators, setAvailableTranslators] = useState<typeof mockTranslators>([])
 
-  const overviewData = getOverviewData()
+  // 准备短剧选项
+  const dramaOptions: SearchableSelectOption[] = useMemo(() => {
+    return [
+      { value: "all", label: "全部短剧" },
+      ...mockRawAnalyticsData.dramas.map(drama => ({
+        value: drama.id,
+        label: drama.title,
+        subtitle: `${drama.totalEpisodes}集 · ${drama.status}`
+      }))
+    ]
+  }, [])
+
+  // 监听短剧选择变化，更新可用选项
+  useEffect(() => {
+    const options = updateFilterOptions(mockRawAnalyticsData, selectedDrama)
+    setAvailableLanguages(options.availableLanguages)
+    setAvailableTranslators(options.availableTranslators)
+
+    // 如果当前选择的语种/译员不在新列表中，重置为"all"
+    if (selectedLanguage !== "all" && !options.availableLanguages.some(l => l.code === selectedLanguage)) {
+      setSelectedLanguage("all")
+    }
+    if (selectedTranslator !== "all" && !options.availableTranslators.some(t => t.id === selectedTranslator)) {
+      setSelectedTranslator("all")
+    }
+  }, [selectedDrama, selectedLanguage, selectedTranslator])
+
+  // 聚合数据
+  const aggregatedData = useMemo(() => {
+    const filters: FilterConditions = {
+      dramaId: selectedDrama,
+      language: selectedLanguage,
+      translatorId: selectedTranslator,
+      period: selectedPeriod
+    }
+    return aggregateAnalyticsData(mockRawAnalyticsData, filters)
+  }, [selectedDrama, selectedLanguage, selectedTranslator, selectedPeriod])
+
+  // 生成概览卡片
+  const overviewCards = useMemo(() => {
+    const filters: FilterConditions = {
+      dramaId: selectedDrama,
+      language: selectedLanguage,
+      translatorId: selectedTranslator,
+      period: selectedPeriod
+    }
+    return generateOverviewCards(aggregatedData, filters)
+  }, [aggregatedData, selectedDrama, selectedLanguage, selectedTranslator, selectedPeriod])
+
+  // 准备语种选项
+  const languageOptions = useMemo(() => {
+    return [
+      { value: "all", label: "全部语种" },
+      ...availableLanguages.map(lang => ({
+        value: lang.code,
+        label: lang.name
+      }))
+    ]
+  }, [availableLanguages])
+
+  // 准备译员选项
+  const translatorOptions = useMemo(() => {
+    return [
+      { value: "all", label: "全部译员" },
+      ...availableTranslators.map(t => ({
+        value: t.id,
+        label: t.name
+      }))
+    ]
+  }, [availableTranslators])
 
   return (
     <div className="flex flex-col h-full">
@@ -170,29 +161,26 @@ export function AnalyticsDashboard() {
         
         {/* 筛选器 */}
         <div className="flex items-center gap-3 flex-wrap">
-          <Select value={selectedDrama} onValueChange={setSelectedDrama}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="选择短剧" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">全部短剧</SelectItem>
-              <SelectItem value="1">霸道总裁爱上我</SelectItem>
-              <SelectItem value="2">穿越之王妃驾到</SelectItem>
-              <SelectItem value="3">重生之豪门千金</SelectItem>
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={selectedDrama}
+            onValueChange={setSelectedDrama}
+            options={dramaOptions}
+            placeholder="选择短剧"
+            searchPlaceholder="搜索短剧..."
+            emptyText="未找到匹配的短剧"
+            className="w-64"
+          />
 
           <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="选择语种" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">全部语种</SelectItem>
-              <SelectItem value="en">英语</SelectItem>
-              <SelectItem value="es">西班牙语</SelectItem>
-              <SelectItem value="pt">葡萄牙语</SelectItem>
-              <SelectItem value="ja">日语</SelectItem>
-              <SelectItem value="ko">韩语</SelectItem>
+              {languageOptions.map(option => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
@@ -201,10 +189,11 @@ export function AnalyticsDashboard() {
               <SelectValue placeholder="选择译员" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">全部译员</SelectItem>
-              <SelectItem value="1">张三</SelectItem>
-              <SelectItem value="2">李四</SelectItem>
-              <SelectItem value="3">王五</SelectItem>
+              {translatorOptions.map(option => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
@@ -227,8 +216,15 @@ export function AnalyticsDashboard() {
         <div className="p-6 space-y-6">
           {/* Overview Cards - 动态显示 */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {Object.values(overviewData).map((card, index) => {
-              const Icon = card.icon
+            {overviewCards.map((card, index) => {
+              const iconMap: Record<string, any> = {
+                Activity,
+                Users,
+                Clock,
+                DollarSign
+              }
+              const Icon = iconMap[card.icon] || Activity
+              
               return (
                 <Card key={index}>
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
