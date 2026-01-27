@@ -1239,6 +1239,27 @@ export function WorkspacePage({
       return
     }
     
+    // 如果是视频压制任务，显示下载队列对话框
+    if (activeWorkflow === "video_compress") {
+      setShowVideoCompress(false)
+      
+      // 创建下载队列项目（模拟80集视频）
+      const totalEpisodes = selectedVariant?.totalEpisodes || 80
+      const downloadItems = Array.from({ length: totalEpisodes }, (_, i) => ({
+        id: `compress-${i + 1}`,
+        name: `第${i + 1}集 - 压制视频`,
+        progress: 0,
+        status: "pending" as const,
+      }))
+      
+      setDownloadQueueItems(downloadItems)
+      setShowDownloadQueue(true)
+      
+      // 开始模拟下载进度
+      simulateVideoCompressDownload(downloadItems)
+      return
+    }
+    
     // 其他任务直接显示成功对话框
     setShowAIExtractOptions(false)
     setShowAIExtractSubtitleRegion(false)
@@ -1252,6 +1273,61 @@ export function WorkspacePage({
     setShowVideoCompress(false)
     setShowSuccess(true)
     setActiveWorkflow(null)
+  }
+  
+  // 模拟视频压制下载进度
+  const simulateVideoCompressDownload = (items: typeof downloadQueueItems) => {
+    let currentIndex = 0
+    
+    const downloadNext = () => {
+      if (currentIndex >= items.length) {
+        // 所有下载完成，更新语言变体状态为已完成
+        setLanguageVariants(prevVariants => 
+          prevVariants.map(variant => {
+            if (variant.id === selectedVariant?.id && variant.currentStage === "视频压制") {
+              return {
+                ...variant,
+                currentStage: "已完成",
+                completedEpisodes: variant.totalEpisodes,
+              }
+            }
+            return variant
+          })
+        )
+        setActiveWorkflow(null)
+        return
+      }
+      
+      const item = items[currentIndex]
+      
+      // 更新为下载中
+      setDownloadQueueItems(prev => 
+        prev.map(i => i.id === item.id ? { ...i, status: "downloading" as const } : i)
+      )
+      
+      // 模拟下载进度
+      let progress = 0
+      const progressInterval = setInterval(() => {
+        progress += 10
+        setDownloadQueueItems(prev => 
+          prev.map(i => i.id === item.id ? { ...i, progress } : i)
+        )
+        
+        if (progress >= 100) {
+          clearInterval(progressInterval)
+          // 标记为完成
+          setDownloadQueueItems(prev => 
+            prev.map(i => i.id === item.id ? { ...i, status: "completed" as const, progress: 100 } : i)
+          )
+          
+          // 下载下一个
+          currentIndex++
+          setTimeout(downloadNext, 100)
+        }
+      }, 100)
+    }
+    
+    downloadNext()
   }
   
   const handleTaskQueueComplete = () => {

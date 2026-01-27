@@ -1841,7 +1841,7 @@ export function SubtitleMountDialog({ open, onOpenChange, onSubmit }: SubtitleMo
   )
 }
 
-// Video Compress dialog
+// Video Compress dialog - 简化为确认对话框
 interface VideoCompressDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -1851,29 +1851,16 @@ interface VideoCompressDialogProps {
 export function VideoCompressDialog({ open, onOpenChange, onSubmit }: VideoCompressDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>视频压制预览</DialogTitle>
+          <DialogTitle>确认视频压制</DialogTitle>
           <DialogDescription>
-            确认视频效果后提交压制任务
+            确认开始视频压制任务吗？压制完成后将自动下载视频文件。
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="relative bg-black rounded-lg overflow-hidden" style={{ aspectRatio: "9/16", maxHeight: "350px", margin: "0 auto", width: "197px" }}>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-muted-foreground text-sm">视频预览区域</span>
-            </div>
-            {/* Play button */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Button variant="secondary" size="icon" className="rounded-full w-12 h-12">
-                <Play className="w-6 h-6" />
-              </Button>
-            </div>
-          </div>
-        </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} className="bg-transparent">取消</Button>
-          <Button onClick={onSubmit}>确认</Button>
+          <Button onClick={onSubmit}>确认压制</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
