@@ -2,13 +2,17 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Save, CheckCircle, Undo, Redo } from "lucide-react"
+import { ArrowLeft, Save, CheckCircle, Undo, Redo, Star } from "lucide-react"
 import { VideoPlayerPanel } from "./video-player-panel"
 import { TimelinePanel } from "./timeline-panel"
 import { SubtitleDualPanel } from "./subtitle-dual-panel"
 import { OnScreenTextPanel } from "./onscreen-text-panel"
 import { GlossaryPanel } from "./glossary-panel"
 import { EpisodeSelectorPanel } from "./episode-selector-panel"
+import { TranslatorRatingDialog, TranslatorRating } from "./translator-rating-dialog"
+import { ModificationComment } from "./modification-comment-dialog"
+import { SubtitleStyle } from "./subtitle-style-panel"
+import { QualityCheckReviewDialog } from "./quality-check-review-dialog"
 import { usePermission } from "@/contexts/permission-context"
 
 interface EditorPageProps {
@@ -37,6 +41,7 @@ interface SubtitleEntry {
   originalText: string
   translatedText: string
   modifications?: ModificationRecord[]
+  comments?: ModificationComment[] // 新增：修改意见列表
 }
 
 // Mock subtitle data with modification history
@@ -364,11 +369,19 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
     return getCompletedEpisodesForProject()
   })
   const totalEpisodes = projectData.totalEpisodes // 使用项目的实际集数
-  const [subtitleStyle, setSubtitleStyle] = useState({
+  const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>({
     fontSize: 16,
     verticalPosition: 85,
-    lineBreakRule: "auto" as const,
   })
+  
+  // 译员评分状态
+  const [ratingDialogOpen, setRatingDialogOpen] = useState(false)
+  const [translatorRating, setTranslatorRating] = useState<TranslatorRating | undefined>(undefined)
+  
+  // 审核对话框状态
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false)
+  const [currentRound, setCurrentRound] = useState(1) // 当前轮次，默认为1
+  
   const duration = 180 // 3 minutes
 
   // 检查是否所有集数都已完成
@@ -567,6 +580,79 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
       // TODO: 加载下一集的字幕数据
     }
   }
+  
+  // 处理修改意见更新
+  const handleUpdateComment = (subtitleId: string, comment: ModificationComment | null) => {
+    setSubtitles((prev) =>
+      prev.map((s) => {
+        if (s.id === subtitleId) {
+          if (comment === null || !comment.comment) {
+            // 删除意见
+            return { ...s, comments: [] }
+          } else {
+            // 添加或更新意见
+            return { ...s, comments: [comment] }
+          }
+        }
+        return s
+      })
+    )
+  }
+  
+  // 处理译员评分提交
+  const handleSubmitRating = (rating: Omit<TranslatorRating, 'reviewerId' | 'reviewerName' | 'timestamp'>) => {
+    const fullRating: TranslatorRating = {
+      ...rating,
+      reviewerId: user.id,
+      reviewerName: user.name,
+      timestamp: new Date().toISOString(),
+    }
+    setTranslatorRating(fullRating)
+    // TODO: 保存到后端
+  }
+  
+  // 处理审核通过
+  const handleApproveReview = () => {
+    console.log('审核通过')
+    // TODO: 保存审核结果到后端
+    // 调用回调函数通知工作台更新状态
+    if (onSubmitReview) {
+      onSubmitReview()
+    }
+    // 返回工作台
+    onBack()
+  }
+  
+  // 处理审核驳回
+  const handleRejectReview = (reason: string) => {
+    console.log('审核驳回，理由：', reason)
+    // TODO: 保存驳回记录到后端
+    // 更新轮次
+    const newRound = currentRound + 1
+    setCurrentRound(newRound)
+    
+    // 创建驳回记录
+    const rejectionRecord = {
+      id: `rejection-${Date.now()}`,
+      projectId: projectId || '',
+      languageVariant,
+      round: currentRound,
+      reason,
+      rejectedBy: user.id,
+      rejectedByName: user.name,
+      rejectedAt: new Date().toISOString(),
+      status: 'pending' as const,
+    }
+    
+    console.log('驳回记录：', rejectionRecord)
+    
+    // 调用回调函数通知工作台更新状态（回滚到人工翻译环节）
+    if (onSubmitReview) {
+      onSubmitReview()
+    }
+    // 返回工作台
+    onBack()
+  }
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -609,6 +695,18 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
                 </>
               )}
               
+              {/* 质检环节显示译员评分按钮 */}
+              {isQualityCheck && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setRatingDialogOpen(true)}
+                >
+                  <Star className="w-4 h-4 mr-1" />
+                  译员评分
+                </Button>
+              )}
+              
               {/* 根据状态和权限显示不同的确认按钮 */}
               {showSubmitButton && (
                 <>
@@ -637,12 +735,16 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
                       disabled={!allEpisodesCompleted}
                       className={!allEpisodesCompleted ? "opacity-50 cursor-not-allowed" : ""}
                       onClick={() => {
-                        // 调用回调函数通知工作台更新状态
-                        if (onSubmitReview) {
-                          onSubmitReview()
+                        // 质检环节：打开审核对话框
+                        if (isQualityCheck) {
+                          setReviewDialogOpen(true)
+                        } else {
+                          // 其他环节：直接提交
+                          if (onSubmitReview) {
+                            onSubmitReview()
+                          }
+                          onBack()
                         }
-                        // 关闭编辑器，返回工作台
-                        onBack()
                       }}
                     >
                       <CheckCircle className="w-4 h-4 mr-1" />
@@ -688,6 +790,9 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
             isPending={isPending}
             showCompleteButton={showCompleteButton}
             showModifications={showModifications}
+            showCommentIcons={isQualityCheck} // 质检环节显示修改意见图标
+            isQualityCheck={isQualityCheck} // 传递质检环节标识
+            onUpdateComment={handleUpdateComment} // 传递更新意见的回调
             isReview={isReview}
             currentEpisode={currentEpisode}
             totalEpisodes={totalEpisodes}
@@ -750,6 +855,26 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
           isReadOnly={isReadOnly}
         />
       </div>
+      
+      {/* 译员评分对话框 */}
+      <TranslatorRatingDialog
+        open={ratingDialogOpen}
+        onOpenChange={setRatingDialogOpen}
+        translatorName="张译员" // TODO: 从实际数据获取译员姓名
+        currentRating={translatorRating}
+        onSubmit={handleSubmitRating}
+      />
+      
+      {/* 审核提交对话框 */}
+      <QualityCheckReviewDialog
+        open={reviewDialogOpen}
+        onOpenChange={setReviewDialogOpen}
+        projectTitle={projectData.title}
+        languageVariant={languageVariant}
+        currentRound={currentRound}
+        onApprove={handleApproveReview}
+        onReject={handleRejectReview}
+      />
     </div>
   )
 }

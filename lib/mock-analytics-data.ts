@@ -1,4 +1,5 @@
-// Mock数据 - 数据仪表盘
+// Mock数据 - 数据仪表盘 - 统一数据源
+// 此文件是所有分析页面的唯一数据源，确保数据一致性
 
 import type {
   Drama,
@@ -10,108 +11,239 @@ import type {
   RawAnalyticsData
 } from "./analytics-utils"
 
-// 短剧数据
+// ============ 短剧数据 ============
 export const mockDramas: Drama[] = [
   {
     id: "1",
     title: "霸道总裁爱上我",
     totalEpisodes: 80,
     status: "翻译中",
-    createdAt: "2024-01-01"
+    createdAt: "2024-02-01"
   },
   {
     id: "2",
     title: "穿越之王妃驾到",
     totalEpisodes: 100,
-    status: "质检中",
-    createdAt: "2024-01-05"
+    status: "已完成",
+    createdAt: "2024-01-15"
   },
   {
     id: "3",
     title: "重生之豪门千金",
     totalEpisodes: 60,
     status: "翻译中",
-    createdAt: "2024-01-10"
+    createdAt: "2024-02-03"
   },
   {
     id: "4",
     title: "神医毒妃不好惹",
     totalEpisodes: 90,
-    status: "物料完成",
-    createdAt: "2024-01-15"
+    status: "质检中",
+    createdAt: "2024-01-20"
   },
   {
     id: "5",
-    title: "闪婚后大佬每天都在吃醋",
+    title: "闪婚后大佬马甲藏不住了",
     totalEpisodes: 70,
     status: "已完成",
-    createdAt: "2023-12-20"
+    createdAt: "2024-01-25"
+  },
+  {
+    id: "6",
+    title: "豪门继承人的秘密",
+    totalEpisodes: 85,
+    status: "翻译中",
+    createdAt: "2024-02-05"
+  },
+  {
+    id: "7",
+    title: "替嫁新娘的逆袭",
+    totalEpisodes: 95,
+    status: "质检中",
+    createdAt: "2024-01-28"
+  },
+  {
+    id: "8",
+    title: "重生之商业帝国",
+    totalEpisodes: 75,
+    status: "已完成",
+    createdAt: "2024-01-10"
   }
 ]
 
-// 译员数据
+// ============ 译员数据 ============
+// 12位译员：8位翻译 + 4位审校
 export const mockTranslators: Translator[] = [
+  // 翻译译员
   {
     id: "1",
-    name: "张三",
-    languages: ["英语", "西班牙语"],
-    qualityRating: "A",
-    modificationRate: 12.5,
-    selfModificationRate: 8.3,
-    specialties: ["古装", "现代"],
-    totalMinutes: 4800,
-    completedTasks: 45,
-    cost: 9600
+    name: "王五",
+    languages: ["英语", "日语", "韩语"],
+    qualityRating: "S",
+    modificationRate: 8.5,
+    selfModificationRate: 4.2,
+    specialties: ["现代剧", "都市剧"],
+    totalMinutes: 1800,
+    completedTasks: 18,
+    cost: 81000
   },
   {
     id: "2",
-    name: "李四",
-    languages: ["日语", "韩语"],
-    qualityRating: "B",
-    modificationRate: 18.2,
-    selfModificationRate: 12.1,
-    specialties: ["现代", "男频"],
-    totalMinutes: 3600,
-    completedTasks: 32,
-    cost: 7200
+    name: "张三",
+    languages: ["英语", "西班牙语"],
+    qualityRating: "A+",
+    modificationRate: 10.2,
+    selfModificationRate: 5.8,
+    specialties: ["古装剧", "武侠剧"],
+    totalMinutes: 1500,
+    completedTasks: 15,
+    cost: 63000
   },
   {
     id: "3",
-    name: "王五",
-    languages: ["英语", "法语"],
-    qualityRating: "A+",
-    modificationRate: 9.8,
-    selfModificationRate: 6.2,
-    specialties: ["古装", "女频"],
-    totalMinutes: 5200,
-    completedTasks: 52,
-    cost: 10400
-  },
-  {
-    id: "4",
-    name: "赵六",
-    languages: ["葡萄牙语", "西班牙语"],
-    qualityRating: "A",
-    modificationRate: 11.2,
-    selfModificationRate: 7.8,
-    specialties: ["现代", "女频"],
-    totalMinutes: 3800,
-    completedTasks: 38,
-    cost: 7600
-  },
-  {
-    id: "5",
     name: "钱七",
     languages: ["韩语", "日语"],
     qualityRating: "A+",
-    modificationRate: 8.5,
-    selfModificationRate: 5.2,
-    specialties: ["古装", "男频"],
-    totalMinutes: 4200,
-    completedTasks: 42,
-    cost: 8400
+    modificationRate: 12.8,
+    selfModificationRate: 6.5,
+    specialties: ["悬疑剧", "推理剧"],
+    totalMinutes: 1200,
+    completedTasks: 12,
+    cost: 48000
+  },
+  {
+    id: "4",
+    name: "李四",
+    languages: ["日语", "葡萄牙语"],
+    qualityRating: "A",
+    modificationRate: 15.3,
+    selfModificationRate: 7.2,
+    specialties: ["古装剧", "宫廷剧"],
+    totalMinutes: 1400,
+    completedTasks: 14,
+    cost: 53200
+  },
+  {
+    id: "5",
+    name: "赵六",
+    languages: ["西班牙语", "葡萄牙语"],
+    qualityRating: "B",
+    modificationRate: 18.5,
+    selfModificationRate: 8.9,
+    specialties: ["现代剧", "爱情剧"],
+    totalMinutes: 1000,
+    completedTasks: 10,
+    cost: 35000
+  },
+  {
+    id: "6",
+    name: "孙八",
+    languages: ["葡萄牙语", "西班牙语"],
+    qualityRating: "A+",
+    modificationRate: 11.5,
+    selfModificationRate: 5.5,
+    specialties: ["现代剧", "都市剧"],
+    totalMinutes: 1300,
+    completedTasks: 13,
+    cost: 55900
+  },
+  {
+    id: "7",
+    name: "周九",
+    languages: ["英语"],
+    qualityRating: "B",
+    modificationRate: 20.2,
+    selfModificationRate: 9.5,
+    specialties: ["现代剧", "青春剧"],
+    totalMinutes: 900,
+    completedTasks: 9,
+    cost: 28800
+  },
+  {
+    id: "8",
+    name: "吴十",
+    languages: ["法语", "英语"],
+    qualityRating: "A",
+    modificationRate: 14.8,
+    selfModificationRate: 6.8,
+    specialties: ["古装剧", "悬疑剧"],
+    totalMinutes: 1100,
+    completedTasks: 11,
+    cost: 42900
+  },
+  // 审校译员
+  {
+    id: "9",
+    name: "小王",
+    languages: ["英语", "日语", "韩语"],
+    qualityRating: "S",
+    modificationRate: 7.2,
+    selfModificationRate: 0,
+    specialties: ["现代剧", "都市剧"],
+    totalMinutes: 1000,
+    completedTasks: 20,
+    cost: 50000
+  },
+  {
+    id: "10",
+    name: "小李",
+    languages: ["日语", "法语"],
+    qualityRating: "A+",
+    modificationRate: 9.5,
+    selfModificationRate: 0,
+    specialties: ["古装剧", "武侠剧"],
+    totalMinutes: 850,
+    completedTasks: 17,
+    cost: 40800
+  },
+  {
+    id: "11",
+    name: "小刘",
+    languages: ["英语", "西班牙语"],
+    qualityRating: "A",
+    modificationRate: 11.2,
+    selfModificationRate: 0,
+    specialties: ["悬疑剧", "推理剧"],
+    totalMinutes: 800,
+    completedTasks: 16,
+    cost: 36800
+  },
+  {
+    id: "12",
+    name: "小陈",
+    languages: ["韩语", "葡萄牙语"],
+    qualityRating: "A+",
+    modificationRate: 8.8,
+    selfModificationRate: 0,
+    specialties: ["现代剧", "爱情剧"],
+    totalMinutes: 950,
+    completedTasks: 19,
+    cost: 46550
   }
 ]
+
+// ============ 汇总统计数据 ============
+// 从译员数据计算得出，确保数据一致性
+export const translatorStats = {
+  totalTranslators: mockTranslators.length, // 12人
+  totalCost: mockTranslators.reduce((sum, t) => sum + t.cost, 0), // ¥581,950
+  totalTasks: mockTranslators.reduce((sum, t) => sum + t.completedTasks, 0), // 174个
+  totalMinutes: mockTranslators.reduce((sum, t) => sum + t.totalMinutes, 0), // 13,800分钟
+  avgModificationRate: mockTranslators.reduce((sum, t) => sum + t.modificationRate, 0) / mockTranslators.length, // 12.5%
+  avgSelfModificationRate: mockTranslators.filter(t => t.selfModificationRate > 0).reduce((sum, t) => sum + t.selfModificationRate, 0) / mockTranslators.filter(t => t.selfModificationRate > 0).length, // 6.8%
+  highRatingCount: mockTranslators.filter(t => t.qualityRating === "S" || t.qualityRating === "A+").length, // 8人
+  highRatingPercentage: Math.round((mockTranslators.filter(t => t.qualityRating === "S" || t.qualityRating === "A+").length / mockTranslators.length) * 100) // 67%
+}
+
+// 短剧统计数据
+export const dramaStats = {
+  totalDramas: mockDramas.length, // 8部
+  translatingCount: mockDramas.filter(d => d.status === "翻译中").length, // 3部
+  reviewingCount: mockDramas.filter(d => d.status === "质检中").length, // 2部
+  completedCount: mockDramas.filter(d => d.status === "已完成").length, // 3部
+  inProgressCount: mockDramas.filter(d => d.status === "翻译中" || d.status === "质检中").length, // 5部
+  completionRate: Math.round((mockDramas.filter(d => d.status === "已完成").length / mockDramas.length) * 100) // 38%
+}
 
 // 语种版本数据
 export const mockLanguageVersions: LanguageVersion[] = [

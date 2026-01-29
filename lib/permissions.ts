@@ -88,17 +88,20 @@ export function hasWorkflowPermission(role: UserRole, workflowId: string): boole
   return permissions.includes('*') || permissions.includes(workflowId)
 }
 
+// 默认用户（服务端和客户端保持一致）
+const DEFAULT_USER: User = {
+  id: 'admin',
+  name: '管理员',
+  email: 'admin@dramago.com',
+  role: 'admin',
+}
+
 /**
  * 获取当前用户（从 localStorage）
  */
 export function getCurrentUser(): User {
   if (typeof window === 'undefined') {
-    return {
-      id: 'admin',
-      name: 'Admin',
-      email: 'admin@dramago.com',
-      role: 'admin',
-    }
+    return DEFAULT_USER
   }
 
   const stored = localStorage.getItem('current-user')
@@ -111,12 +114,7 @@ export function getCurrentUser(): User {
   }
 
   // 默认管理员
-  return {
-    id: 'admin',
-    name: 'Admin',
-    email: 'admin@dramago.com',
-    role: 'admin',
-  }
+  return DEFAULT_USER
 }
 
 /**

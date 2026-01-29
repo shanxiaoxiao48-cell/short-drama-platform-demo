@@ -1,11 +1,13 @@
 "use client"
 
-import { useRef, useEffect } from "react"
+import { useRef, useEffect, useState } from "react"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { SubtitleModificationTooltip } from "./subtitle-modification-tooltip"
-import { CheckCircle, ChevronLeft, ChevronRight } from "lucide-react"
+import { ModificationCommentDialog, ModificationComment } from "./modification-comment-dialog"
+import { CheckCircle, ChevronLeft, ChevronRight, MessageSquare } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 interface ModificationRecord {
   userId: string
@@ -23,6 +25,7 @@ interface SubtitleEntry {
   originalText: string
   translatedText: string
   modifications?: ModificationRecord[]
+  comments?: ModificationComment[] // 新增：修改意见列表
 }
 
 interface SubtitleDualPanelProps {
@@ -38,6 +41,9 @@ interface SubtitleDualPanelProps {
   isPending?: boolean // 待开始状态
   showCompleteButton?: boolean // 是否显示完成本集按钮
   showModifications?: boolean // 是否显示修改标记（质检环节显示）
+  showCommentIcons?: boolean // 是否显示修改意见图标（质检环节显示）
+  isQualityCheck?: boolean // 是否是质检环节（用于判断是否可以编辑意见）
+  onUpdateComment?: (subtitleId: string, comment: ModificationComment | null) => void // 更新修改意见的回调
   // AI提取待确认状态的导航参数
   isReview?: boolean // 是否是AI提取待确认状态
   currentEpisode?: number // 当前集数
@@ -60,6 +66,9 @@ export function SubtitleDualPanel({
   isPending = false, // 默认不是待开始状态
   showCompleteButton = true, // 默认显示完成本集按钮
   showModifications = false, // 默认不显示修改标记（只在质检环节显示）
+  showCommentIcons = false, // 默认不显示修改意见图标
+  isQualityCheck = false, // 默认不是质检环节
+  onUpdateComment, // 更新修改意见的回调
   isReview = false, // 默认不是AI提取待确认状态
   currentEpisode = 1,
   totalEpisodes = 1,
@@ -69,6 +78,10 @@ export function SubtitleDualPanel({
 }: SubtitleDualPanelProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const selectedRef = useRef<HTMLDivElement>(null)
+  
+  // 修改意见对话框状态
+  const [commentDialogOpen, setCommentDialogOpen] = useState(false)
+  const [currentSubtitle, setCurrentSubtitle] = useState<SubtitleEntry | null>(null)
 
   const isCurrentSubtitle = (sub: SubtitleEntry) => {
     return currentTime >= sub.startTime && currentTime < sub.endTime
@@ -80,6 +93,28 @@ export function SubtitleDualPanel({
       selectedRef.current.scrollIntoView({ behavior: "smooth", block: "center" })
     }
   }, [selectedId])
+  
+  // 打开修改意见对话框
+  const handleOpenCommentDialog = (subtitle: SubtitleEntry, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setCurrentSubtitle(subtitle)
+    setCommentDialogOpen(true)
+  }
+  
+  // 提交修改意见
+  const handleSubmitComment = (comment: Omit<ModificationComment, 'reviewerId' | 'reviewerName' | 'timestamp'>) => {
+    if (currentSubtitle && onUpdateComment) {
+      const fullComment: ModificationComment = {
+        ...comment,
+        reviewerId: "reviewer-1", // 实际应从用户上下文获取
+        reviewerName: "质检员", // 实际应从用户上下文获取
+        timestamp: new Date().toISOString(),
+      }
+      
+      // 如果评论为空，表示删除
+      onUpdateComment(currentSubtitle.id, comment.comment ? fullComment : null)
+    }
+  }
 
   return (
     <div className="flex flex-col h-full bg-card">
@@ -137,21 +172,48 @@ export function SubtitleDualPanel({
                       onClick={(e) => e.stopPropagation()}
                       className={cn(
                         "min-h-[40px] max-h-[120px] text-xs resize-none py-1.5 px-2 border-0",
-                        showModifications && subtitle.modifications && subtitle.modifications.length > 0 && "pr-8"
+                        (showModifications && subtitle.modifications && subtitle.modifications.length > 0) || showCommentIcons ? "pr-8" : ""
                       )}
                       rows={2}
                       placeholder="译文"
                       disabled={isReadOnly}
                     />
-                    {/* 只在质检环节显示修改标记 */}
-                    {showModifications && subtitle.modifications && subtitle.modifications.length > 0 && (
-                      <div className="absolute right-2 top-1.5">
+                    
+                    {/* 右侧图标区域 */}
+                    <div className="absolute right-2 top-1.5 flex flex-col gap-1">
+                      {/* 只在质检环节显示修改标记 */}
+                      {showModifications && subtitle.modifications && subtitle.modifications.length > 0 && (
                         <SubtitleModificationTooltip
                           currentText={subtitle.translatedText}
                           modifications={subtitle.modifications}
                         />
-                      </div>
-                    )}
+                      )}
+                      
+                      {/* 修改意见图标 - 质检环节或有意见时显示 */}
+                      {showCommentIcons && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            "h-6 w-6 relative",
+                            subtitle.comments && subtitle.comments.length > 0 
+                              ? "text-blue-600 hover:text-blue-700 hover:bg-blue-50" 
+                              : "text-muted-foreground hover:text-foreground"
+                          )}
+                          onClick={(e) => handleOpenCommentDialog(subtitle, e)}
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          {subtitle.comments && subtitle.comments.length > 0 && (
+                            <Badge 
+                              variant="destructive" 
+                              className="absolute -top-1 -right-1 h-3 w-3 p-0 flex items-center justify-center text-[8px]"
+                            >
+                              {subtitle.comments.length}
+                            </Badge>
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -217,6 +279,22 @@ export function SubtitleDualPanel({
             )}
           </div>
         </div>
+      )}
+      
+      {/* 修改意见对话框 */}
+      {currentSubtitle && (
+        <ModificationCommentDialog
+          open={commentDialogOpen}
+          onOpenChange={setCommentDialogOpen}
+          subtitle={{
+            id: currentSubtitle.id,
+            originalText: currentSubtitle.originalText,
+            translatedText: currentSubtitle.translatedText,
+          }}
+          existingComment={currentSubtitle.comments?.[0]} // 暂时只支持一条意见
+          onSubmit={handleSubmitComment}
+          readOnly={!isQualityCheck} // 非质检环节为只读
+        />
       )}
     </div>
   )

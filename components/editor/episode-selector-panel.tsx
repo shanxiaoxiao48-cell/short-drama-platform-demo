@@ -2,21 +2,17 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Slider } from "@/components/ui/slider"
 import { Separator } from "@/components/ui/separator"
 import { Check, ChevronDown, ChevronUp } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { SubtitleStylePanel, SubtitleStyle } from "./subtitle-style-panel"
 
 interface EpisodeSelectorPanelProps {
   currentEpisode: number
   totalEpisodes: number
   completedEpisodes?: number[] // 已完成的集数列表
-  subtitleStyle: {
-    fontSize: number
-    verticalPosition: number
-  }
-  onStyleChange: (style: { fontSize: number; verticalPosition: number }) => void
+  subtitleStyle: SubtitleStyle
+  onStyleChange: (style: SubtitleStyle) => void
   onEpisodeChange?: (episode: number) => void
   showStylePanel?: boolean // 是否显示字幕样式面板
   showCompletedMarks?: boolean // 是否显示已完成的打勾标记
@@ -196,48 +192,12 @@ export function EpisodeSelectorPanel({
 
           <Separator />
 
-          {/* 字幕样式调节 - 根据 showStylePanel 控制显示 */}
-          {showStylePanel && (
-            <div>
-              <h4 className="text-[10px] font-medium text-foreground mb-2">字幕样式</h4>
-              
-              {/* Font size */}
-              <div className="space-y-1.5 mb-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-[10px]">字体大小</Label>
-                  <span className="text-[10px] text-muted-foreground">{subtitleStyle.fontSize}px</span>
-                </div>
-                <Slider
-                  value={[subtitleStyle.fontSize]}
-                  min={12}
-                  max={32}
-                  step={1}
-                  onValueChange={([value]) =>
-                    onStyleChange({ ...subtitleStyle, fontSize: value })
-                  }
-                  className="w-full"
-                />
-              </div>
-
-              {/* Vertical position */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label className="text-[10px]">垂直位置</Label>
-                  <span className="text-[10px] text-muted-foreground">{subtitleStyle.verticalPosition}%</span>
-                </div>
-                <Slider
-                  value={[subtitleStyle.verticalPosition]}
-                  min={0}
-                  max={100}
-                  step={1}
-                  onValueChange={([value]) =>
-                    onStyleChange({ ...subtitleStyle, verticalPosition: value })
-                  }
-                  className="w-full"
-                />
-              </div>
-            </div>
-          )}
+          {/* 字幕样式调节 - 使用新的 SubtitleStylePanel 组件 */}
+          <SubtitleStylePanel
+            subtitleStyle={subtitleStyle}
+            onStyleChange={onStyleChange}
+            showStylePanel={showStylePanel}
+          />
         </div>
       </div>
     </div>

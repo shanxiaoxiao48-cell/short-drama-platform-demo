@@ -26,7 +26,7 @@ import { VideoWatermark } from "./video-watermark"
 interface SubtitleStyle {
   fontSize: number
   verticalPosition: number
-  lineBreakRule: "auto" | "manual" | "character-limit"
+  lineBreakRule?: "auto" | "manual" | "character-limit"
   maxCharactersPerLine?: number
 }
 
