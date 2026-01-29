@@ -502,6 +502,44 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
     }
     // 画面字轨道暂时不处理，可以后续添加
   }
+  
+  // 在光标位置添加字幕
+  const handleAddSubtitle = (track: "original" | "translated" | "onscreen", startTime: number, endTime: number) => {
+    // 只读模式下不允许添加
+    if (isReadOnly) return
+    
+    // 生成新的ID
+    const newId = String(subtitles.length + 1)
+    
+    // 创建新字幕
+    const newSubtitle: SubtitleEntry = {
+      id: newId,
+      startTime,
+      endTime,
+      originalText: track === "original" ? "新字幕" : "",
+      translatedText: track === "translated" ? "New subtitle" : "",
+    }
+    
+    // 添加到字幕列表
+    setSubtitles((prev) => [...prev, newSubtitle])
+    
+    // 更新时间信息
+    if (track === "original") {
+      setOriginalTiming((prev) => ({
+        ...prev,
+        [newId]: { startTime, endTime }
+      }))
+    } else if (track === "translated") {
+      setTranslatedTiming((prev) => ({
+        ...prev,
+        [newId]: { startTime, endTime }
+      }))
+    }
+    
+    // 选中新添加的字幕
+    const prefixedId = track === "original" ? `orig-${newId}` : track === "translated" ? `trans-${newId}` : `os-${newId}`
+    setSelectedSubtitleId(prefixedId)
+  }
 
   // Convert subtitles to timeline blocks with independent timing
   const originalBlocks = subtitles.map((s) => ({
@@ -852,6 +890,7 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
           onSelectSubtitle={handleSelectFromTimeline}
           onTimeChange={setCurrentTime}
           onUpdateSubtitleTime={handleUpdateSubtitleTime}
+          onAddSubtitle={handleAddSubtitle}
           isReadOnly={isReadOnly}
         />
       </div>
