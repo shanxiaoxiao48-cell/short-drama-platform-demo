@@ -42,6 +42,15 @@ interface VideoPlayerPanelProps {
   onPlayingChange?: (playing: boolean) => void
   duration?: number
   userName?: string // 添加用户名参数用于水印
+  // 字幕可见性控制和多字幕支持
+  subtitleVisibility?: {
+    original: boolean
+    translated: boolean
+    onscreen: boolean
+  }
+  originalSubtitle?: string // 原文字幕
+  translatedSubtitle?: string // 译文字幕
+  onscreenTexts?: Array<{ text: string; type?: string }> // 画面字列表
 }
 
 const DEFAULT_FRAME_RATE = 30 // 30 fps
@@ -63,6 +72,10 @@ export function VideoPlayerPanel({
   onPlayingChange,
   duration: externalDuration = 180,
   userName = "张三", // 默认用户名
+  subtitleVisibility = { original: false, translated: true, onscreen: true },
+  originalSubtitle,
+  translatedSubtitle,
+  onscreenTexts = [],
 }: VideoPlayerPanelProps) {
   const [internalIsPlaying, setInternalIsPlaying] = useState(false)
   const [volume, setVolume] = useState(80)
@@ -234,8 +247,29 @@ export function VideoPlayerPanel({
           {/* Watermark overlay - 水印层 */}
           <VideoWatermark userName={userName} />
 
-          {/* Subtitle overlay */}
-          {currentSubtitle && (
+          {/* Subtitle overlays - 多字幕层叠显示 */}
+          {/* 原文字幕 - 显示在偏上位置 */}
+          {subtitleVisibility.original && originalSubtitle && (
+            <div
+              className="absolute left-4 right-4 text-center"
+              style={{
+                bottom: `${100 - subtitleStyle.verticalPosition + 8}%`, // 比译文高8%
+              }}
+            >
+              <p
+                className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+                style={{
+                  fontSize: `${subtitleStyle.fontSize}px`,
+                  lineHeight: 1.4,
+                }}
+              >
+                {originalSubtitle}
+              </p>
+            </div>
+          )}
+
+          {/* 译文字幕 - 显示在底部位置（默认） */}
+          {subtitleVisibility.translated && (translatedSubtitle || currentSubtitle) && (
             <div
               className="absolute left-4 right-4 text-center"
               style={{
@@ -249,8 +283,33 @@ export function VideoPlayerPanel({
                   lineHeight: 1.4,
                 }}
               >
-                {currentSubtitle}
+                {translatedSubtitle || currentSubtitle}
               </p>
+            </div>
+          )}
+
+          {/* 画面字 - 显示在顶部位置 */}
+          {subtitleVisibility.onscreen && onscreenTexts.length > 0 && (
+            <div className="absolute inset-0 pointer-events-none">
+              {onscreenTexts.map((item, index) => (
+                <div
+                  key={index}
+                  className="absolute left-1/2 -translate-x-1/2"
+                  style={{
+                    top: item.type === "标题" ? "20%" : "15%", // 根据类型调整位置
+                  }}
+                >
+                  <p
+                    className="text-white font-bold drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
+                    style={{
+                      fontSize: `${subtitleStyle.fontSize + 4}px`, // 画面字稍大
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {item.text}
+                  </p>
+                </div>
+              ))}
             </div>
           )}
 

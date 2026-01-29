@@ -14,6 +14,8 @@ import { ModificationComment } from "./modification-comment-dialog"
 import { SubtitleStyle } from "./subtitle-style-panel"
 import { QualityCheckReviewDialog } from "./quality-check-review-dialog"
 import { usePermission } from "@/contexts/permission-context"
+import { findAvailableTimeSlot, adjustPositionToAvoidCollision } from "@/lib/subtitle-collision-utils"
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable"
 
 interface EditorPageProps {
   projectId: string | null
@@ -133,6 +135,45 @@ const mockOnScreenText = [
   },
 ]
 
+// Mock subtitle data with version history for quality check
+const mockSubtitlesWithHistory = mockSubtitles.map((sub, index) => ({
+  ...sub,
+  currentText: sub.translatedText,
+  versions: [
+    {
+      id: `${sub.id}-v1`,
+      version: 1,
+      type: "ai" as const,
+      text: sub.translatedText.replace(/would/g, "will").replace(/person/g, "people"),
+      userId: "ai-system",
+      userName: "AI翻译",
+      timestamp: "2024-01-20T09:00:00",
+    },
+    {
+      id: `${sub.id}-v2`,
+      version: 2,
+      type: "manual" as const,
+      text: sub.translatedText,
+      userId: "user1",
+      userName: "张译员",
+      timestamp: "2024-01-20T10:30:00",
+    },
+    ...(sub.modifications && sub.modifications.length > 0
+      ? [
+          {
+            id: `${sub.id}-v3`,
+            version: 3,
+            type: "review" as const,
+            text: sub.translatedText,
+            userId: "user2",
+            userName: "李审核",
+            timestamp: "2024-01-20T14:20:00",
+          },
+        ]
+      : []),
+  ],
+}))
+
 // 项目数据映射 - 根据projectId获取项目信息
 const projectDataMap: Record<string, { title: string; totalEpisodes: number; image: string }> = {
   "1": { title: "霸道总裁爱上我", totalEpisodes: 80, image: "/drama-posters/badao-zongcai.png" },
@@ -192,6 +233,59 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
   const [currentTime, setCurrentTime] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [selectedSubtitleId, setSelectedSubtitleId] = useState<string | null>(null)
+  
+  // 字幕可见性状态 - 控制视频预览中的字幕显示
+  const [subtitleVisibility, setSubtitleVisibility] = useState({
+    original: false, // 源语言默认隐藏
+    translated: true, // 译文默认显示
+    onscreen: true, // 画面字默认显示
+  })
+  
+  // 面板收起状态 - 从localStorage读取初始状态
+  const [panelCollapsed, setPanelCollapsed] = useState<{
+    onscreen: boolean
+    glossary: boolean
+    episode: boolean
+  }>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('editor-panel-collapsed')
+      if (saved) {
+        try {
+          return JSON.parse(saved)
+        } catch (e) {
+          console.error('Failed to parse panel collapsed state:', e)
+        }
+      }
+    }
+    return {
+      onscreen: false,
+      glossary: false,
+      episode: false,
+    }
+  })
+  
+  // 切换字幕可见性
+  const handleToggleSubtitleVisibility = (track: "original" | "translated" | "onscreen") => {
+    setSubtitleVisibility(prev => ({
+      ...prev,
+      [track]: !prev[track]
+    }))
+  }
+  
+  // 切换面板收起状态
+  const handleTogglePanelCollapse = (panel: "onscreen" | "glossary" | "episode") => {
+    setPanelCollapsed(prev => {
+      const newState = {
+        ...prev,
+        [panel]: !prev[panel]
+      }
+      // 保存到localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('editor-panel-collapsed', JSON.stringify(newState))
+      }
+      return newState
+    })
+  }
   
   // AI提取工作流程状态判断
   const isPending = workflowStage === "ai_extract_pending" // 待开始
@@ -368,6 +462,10 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
     
     return getCompletedEpisodesForProject()
   })
+  
+  // 驳回的集数列表（质检环节使用）
+  const [rejectedEpisodes, setRejectedEpisodes] = useState<number[]>([])
+  
   const totalEpisodes = projectData.totalEpisodes // 使用项目的实际集数
   const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>({
     fontSize: 16,
@@ -391,6 +489,11 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
   // 待确认状态显示原文字幕，其他状态显示翻译字幕
   const currentSubtitle = subtitles.find(
     (s) => currentTime >= s.startTime && currentTime < s.endTime
+  )
+  
+  // 获取当前时间的画面字
+  const currentOnScreenTexts = mockOnScreenText.filter(
+    (item) => currentTime >= item.startTime && currentTime < item.endTime
   )
   
   // 根据状态决定显示哪个字幕
@@ -503,10 +606,53 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
     // 画面字轨道暂时不处理，可以后续添加
   }
   
-  // 在光标位置添加字幕
+  // 在光标位置添加字幕（带碰撞检测）
   const handleAddSubtitle = (track: "original" | "translated" | "onscreen", startTime: number, endTime: number) => {
     // 只读模式下不允许添加
     if (isReadOnly) return
+    
+    // 获取对应轨道的现有字幕
+    let existingSubtitles: Array<{ id: string; startTime: number; endTime: number }> = []
+    
+    if (track === "original") {
+      existingSubtitles = Object.entries(originalTiming).map(([id, timing]) => ({
+        id,
+        ...timing
+      }))
+    } else if (track === "translated") {
+      existingSubtitles = Object.entries(translatedTiming).map(([id, timing]) => ({
+        id,
+        ...timing
+      }))
+    } else if (track === "onscreen") {
+      existingSubtitles = mockOnScreenText.map(item => ({
+        id: item.id,
+        startTime: item.startTime,
+        endTime: item.endTime
+      }))
+    }
+    
+    // 使用碰撞检测找到可用的时间段
+    const desiredDuration = endTime - startTime
+    const availableSlot = findAvailableTimeSlot(
+      startTime,
+      desiredDuration,
+      existingSubtitles,
+      duration
+    )
+    
+    if (!availableSlot) {
+      // 如果找不到可用位置，使用调整算法
+      const adjustedSlot = adjustPositionToAvoidCollision(
+        { startTime, endTime },
+        existingSubtitles
+      )
+      startTime = adjustedSlot.startTime
+      endTime = Math.min(adjustedSlot.endTime, duration)
+    } else {
+      startTime = availableSlot.startTime
+      endTime = availableSlot.endTime
+    }
     
     // 生成新的ID
     const newId = String(subtitles.length + 1)
@@ -619,6 +765,44 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
     }
   }
   
+  // 审核环节：驳回本集
+  const handleRejectEpisode = () => {
+    // 标记当前集为驳回
+    if (!rejectedEpisodes.includes(currentEpisode)) {
+      setRejectedEpisodes([...rejectedEpisodes, currentEpisode])
+    }
+    
+    // 从已完成列表中移除（如果存在）
+    setCompletedEpisodes(completedEpisodes.filter(ep => ep !== currentEpisode))
+    
+    // 自动跳转到下一集
+    if (currentEpisode < totalEpisodes) {
+      setCurrentEpisode(currentEpisode + 1)
+      setCurrentTime(0)
+      setSelectedSubtitleId(null)
+      // TODO: 加载下一集的字幕数据
+    }
+  }
+  
+  // 审核环节：通过本集
+  const handleApproveEpisode = () => {
+    // 标记当前集为完成
+    if (!completedEpisodes.includes(currentEpisode)) {
+      setCompletedEpisodes([...completedEpisodes, currentEpisode])
+    }
+    
+    // 从驳回列表中移除（如果存在）
+    setRejectedEpisodes(rejectedEpisodes.filter(ep => ep !== currentEpisode))
+    
+    // 自动跳转到下一集
+    if (currentEpisode < totalEpisodes) {
+      setCurrentEpisode(currentEpisode + 1)
+      setCurrentTime(0)
+      setSelectedSubtitleId(null)
+      // TODO: 加载下一集的字幕数据
+    }
+  }
+  
   // 处理修改意见更新
   const handleUpdateComment = (subtitleId: string, comment: ModificationComment | null) => {
     setSubtitles((prev) =>
@@ -635,6 +819,23 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
         return s
       })
     )
+  }
+  
+  // 处理版本回退
+  const handleRevertVersion = (subtitleId: string, versionId: string) => {
+    console.log('回退版本:', subtitleId, versionId)
+    // TODO: 实现版本回退逻辑
+    // 1. 找到对应的版本
+    // 2. 将该版本的文本设置为当前文本
+    // 3. 创建新的版本记录
+  }
+  
+  // 处理全部回退
+  const handleRevertAll = () => {
+    if (confirm('确定要将所有字幕回退到初始版本吗？此操作不可撤销。')) {
+      console.log('全部回退到初始版本')
+      // TODO: 实现全部回退逻辑
+    }
   }
   
   // 处理译员评分提交
@@ -751,8 +952,6 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
                   {isReview && (
                     <Button 
                       size="sm"
-                      disabled={!allEpisodesCompleted}
-                      className={!allEpisodesCompleted ? "opacity-50 cursor-not-allowed" : ""}
                       onClick={() => {
                         // 调用回调函数通知工作台更新状态
                         if (onConfirmReview) {
@@ -770,8 +969,6 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
                   {!isReview && !isAIExtractCompleted && (
                     <Button 
                       size="sm"
-                      disabled={!allEpisodesCompleted}
-                      className={!allEpisodesCompleted ? "opacity-50 cursor-not-allowed" : ""}
                       onClick={() => {
                         // 质检环节：打开审核对话框
                         if (isQualityCheck) {
@@ -786,7 +983,7 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
                       }}
                     >
                       <CheckCircle className="w-4 h-4 mr-1" />
-                      {isQualityCheck ? "确认" : "提交审核"}
+                      {isQualityCheck ? "审核完成" : "提交审核"}
                     </Button>
                   )}
                 </>
@@ -796,103 +993,203 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
         </div>
       </header>
 
-      {/* Main Content - 所有面板按比例缩放 */}
-      <div className="flex" style={{ height: "calc(70vh - 56px)" }}>
-        {/* Left - Video Player - 20% 宽度 */}
-        <div className="shrink-0 border-r border-border overflow-hidden" style={{ width: "20%", minWidth: "240px" }}>
-          <VideoPlayerPanel
-            posterImage={projectData.image}
-            currentTime={currentTime}
-            currentSubtitle={displaySubtitle || null}
-            subtitleStyle={subtitleStyle}
-            onTimeChange={setCurrentTime}
-            onFrameStep={handleFrameStep}
-            isPlaying={isPlaying}
-            onPlayingChange={setIsPlaying}
-            duration={duration}
-          />
+      {/* Main Content - 使用 flex 布局，折叠标签栏固定在右边 */}
+      <div className="flex h-full">
+        {/* 可调整大小的内容区域 */}
+        <div className="flex-1 min-w-0">
+          <ResizablePanelGroup direction="vertical" className="h-full">
+            {/* 上半部分：视频播放器 + 字幕编辑器 + 右侧面板 */}
+            <ResizablePanel defaultSize={70} minSize={40}>
+              <ResizablePanelGroup direction="horizontal">
+                {/* Left - Video Player - 固定宽度 */}
+                <ResizablePanel defaultSize={20} minSize={18} maxSize={22}>
+                  <div className="h-full overflow-hidden border-r border-border">
+                    <VideoPlayerPanel
+                  posterImage={projectData.image}
+                  currentTime={currentTime}
+                  currentSubtitle={displaySubtitle || null}
+                  subtitleStyle={subtitleStyle}
+                  onTimeChange={setCurrentTime}
+                  onFrameStep={handleFrameStep}
+                  isPlaying={isPlaying}
+                  onPlayingChange={setIsPlaying}
+                  duration={duration}
+                  userName={user.name}
+                  subtitleVisibility={subtitleVisibility}
+                  originalSubtitle={currentSubtitle?.originalText}
+                  translatedSubtitle={currentSubtitle?.translatedText}
+                  onscreenTexts={currentOnScreenTexts.map(item => ({
+                    text: showTranslation ? (item.translatedText || item.text) : item.text,
+                    type: item.type
+                  }))}
+                />
+              </div>
+            </ResizablePanel>
+
+            <ResizableHandle withHandle />
+
+            {/* Center - Subtitle Panel - 自动填充剩余空间 */}
+            <ResizablePanel minSize={30}>
+              <div className="h-full overflow-y-auto border-r border-border">
+                <SubtitleDualPanel
+                  subtitles={isQualityCheck ? mockSubtitlesWithHistory : subtitles}
+                  currentTime={currentTime}
+                  selectedId={selectedSubtitleId}
+                  onSelectSubtitle={setSelectedSubtitleId}
+                  onUpdateSubtitle={handleUpdateSubtitle}
+                  onTimeChange={setCurrentTime}
+                  onCompleteEpisode={handleCompleteEpisode}
+                  showTranslation={showTranslation}
+                  isReadOnly={isReadOnly}
+                  isPending={isPending}
+                  showCompleteButton={showCompleteButton}
+                  showModifications={showModifications}
+                  showCommentIcons={isQualityCheck}
+                  isQualityCheck={isQualityCheck}
+                  onUpdateComment={handleUpdateComment}
+                  onRevertVersion={handleRevertVersion}
+                  onRevertAll={handleRevertAll}
+                  isReview={isReview}
+                  currentEpisode={currentEpisode}
+                  totalEpisodes={totalEpisodes}
+                  onPrevEpisode={handlePrevEpisode}
+                  onNextEpisode={handleNextEpisode}
+                  onConfirmEpisode={handleConfirmEpisode}
+                  onAddSubtitle={handleAddSubtitle}
+                  onRejectEpisode={handleRejectEpisode}
+                  onApproveEpisode={handleApproveEpisode}
+                />
+              </div>
+            </ResizablePanel>
+
+            {/* Right Panels Container - 只在有展开的面板时显示 */}
+            {(!panelCollapsed.onscreen || !panelCollapsed.glossary || !panelCollapsed.episode) && (
+              <>
+                <ResizableHandle withHandle />
+                
+                {/* 画面字 Panel */}
+                {!panelCollapsed.onscreen && (
+                  <ResizablePanel defaultSize={15} minSize={12} maxSize={25}>
+                    <div className="h-full overflow-y-auto border-r border-border">
+                      <OnScreenTextPanel
+                        currentTime={currentTime}
+                        onScreenText={hasData ? mockOnScreenText : []}
+                        isReadOnly={isReadOnly}
+                        showTranslation={showTranslation}
+                        onAddSubtitle={handleAddSubtitle}
+                        duration={duration}
+                        onCollapse={() => handleTogglePanelCollapse("onscreen")}
+                        isReview={isReview}
+                      />
+                    </div>
+                  </ResizablePanel>
+                )}
+
+                {/* 术语表 Panel */}
+                {!panelCollapsed.glossary && (
+                  <>
+                    {!panelCollapsed.onscreen && <ResizableHandle withHandle />}
+                    <ResizablePanel defaultSize={15} minSize={12} maxSize={25}>
+                      <div className="h-full overflow-y-auto border-r border-border">
+                        <GlossaryPanel 
+                          isReadOnly={isReadOnly} 
+                          isPending={isPending} 
+                          isReview={isReview} 
+                          isAIExtractCompleted={isAIExtractCompleted}
+                          onCollapse={() => handleTogglePanelCollapse("glossary")}
+                        />
+                      </div>
+                    </ResizablePanel>
+                  </>
+                )}
+
+                {/* 选集 Panel */}
+                {!panelCollapsed.episode && (
+                  <>
+                    {(!panelCollapsed.onscreen || !panelCollapsed.glossary) && <ResizableHandle withHandle />}
+                    <ResizablePanel defaultSize={15} minSize={12} maxSize={25}>
+                      <div className="h-full overflow-y-auto">
+                        <EpisodeSelectorPanel
+                          currentEpisode={currentEpisode}
+                          totalEpisodes={totalEpisodes}
+                          completedEpisodes={completedEpisodes}
+                          rejectedEpisodes={rejectedEpisodes}
+                          subtitleStyle={subtitleStyle}
+                          onStyleChange={(style) =>
+                            setSubtitleStyle({ ...subtitleStyle, ...style })
+                          }
+                          onEpisodeChange={handleEpisodeChange}
+                          showStylePanel={showStylePanel}
+                          showCompletedMarks={!isPending}
+                          showViewAllButton={!isReview}
+                          onCollapse={() => handleTogglePanelCollapse("episode")}
+                        />
+                      </div>
+                    </ResizablePanel>
+                  </>
+                )}
+              </>
+            )}
+          </ResizablePanelGroup>
+        </ResizablePanel>
+
+        <ResizableHandle withHandle />
+
+        {/* 下半部分：Timeline Panel */}
+        <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
+          <div className="h-full border-t border-border">
+            <TimelinePanel
+              originalSubtitles={originalBlocks}
+              translatedSubtitles={showTranslation ? translatedBlocks : []}
+              onScreenText={hasData ? (mockOnScreenText as any) : []}
+              duration={duration}
+              currentTime={currentTime}
+              selectedId={selectedSubtitleId}
+              onSelectSubtitle={handleSelectFromTimeline}
+              onTimeChange={setCurrentTime}
+              onUpdateSubtitleTime={handleUpdateSubtitleTime}
+              onAddSubtitle={handleAddSubtitle}
+              isReadOnly={isReadOnly}
+              subtitleVisibility={subtitleVisibility}
+              onToggleSubtitleVisibility={handleToggleSubtitleVisibility}
+            />
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
         </div>
 
-        {/* Center - Subtitle Dual Panel - 25% 宽度，自动填充 */}
-        <div className="flex-1 overflow-y-auto min-w-0 border-r border-border" style={{ minWidth: "300px" }}>
-          <SubtitleDualPanel
-            subtitles={subtitles}
-            currentTime={currentTime}
-            selectedId={selectedSubtitleId}
-            onSelectSubtitle={setSelectedSubtitleId}
-            onUpdateSubtitle={handleUpdateSubtitle}
-            onTimeChange={setCurrentTime}
-            onCompleteEpisode={handleCompleteEpisode}
-            showTranslation={showTranslation}
-            isReadOnly={isReadOnly}
-            isPending={isPending}
-            showCompleteButton={showCompleteButton}
-            showModifications={showModifications}
-            showCommentIcons={isQualityCheck} // 质检环节显示修改意见图标
-            isQualityCheck={isQualityCheck} // 传递质检环节标识
-            onUpdateComment={handleUpdateComment} // 传递更新意见的回调
-            isReview={isReview}
-            currentEpisode={currentEpisode}
-            totalEpisodes={totalEpisodes}
-            onPrevEpisode={handlePrevEpisode}
-            onNextEpisode={handleNextEpisode}
-            onConfirmEpisode={handleConfirmEpisode}
-          />
-        </div>
-
-        {/* Center Right - 画面字 - 15% 宽度 */}
-        <div className="shrink-0 overflow-y-auto border-r border-border" style={{ width: "15%", minWidth: "180px" }}>
-          <OnScreenTextPanel
-            currentTime={currentTime}
-            onScreenText={hasData ? mockOnScreenText : []}
-            isReadOnly={isReadOnly}
-            showTranslation={showTranslation}
-          />
-        </div>
-
-        {/* Right Center - 术语表 - 15% 宽度 */}
-        <div className="shrink-0 overflow-y-auto border-r border-border" style={{ width: "15%", minWidth: "180px" }}>
-          <GlossaryPanel 
-            isReadOnly={isReadOnly} 
-            isPending={isPending} 
-            isReview={isReview} 
-            isAIExtractCompleted={isAIExtractCompleted}
-          />
-        </div>
-
-        {/* Right - Episode Selector & Style Panel - 15% 宽度 */}
-        <div className="shrink-0 overflow-y-auto" style={{ width: "15%", minWidth: "180px" }}>
-          <EpisodeSelectorPanel
-            currentEpisode={currentEpisode}
-            totalEpisodes={totalEpisodes}
-            completedEpisodes={completedEpisodes}
-            subtitleStyle={subtitleStyle}
-            onStyleChange={(style) =>
-              setSubtitleStyle({ ...subtitleStyle, ...style })
-            }
-            onEpisodeChange={handleEpisodeChange}
-            showStylePanel={showStylePanel}
-            showCompletedMarks={!isPending}
-            showViewAllButton={!isReview}
-          />
-        </div>
-      </div>
-
-      {/* Timeline Panel */}
-      <div className="border-t border-border" style={{ height: "30vh" }}>
-        <TimelinePanel
-          originalSubtitles={originalBlocks}
-          translatedSubtitles={showTranslation ? translatedBlocks : []}
-          onScreenText={hasData ? (mockOnScreenText as any) : []}
-          duration={duration}
-          currentTime={currentTime}
-          selectedId={selectedSubtitleId}
-          onSelectSubtitle={handleSelectFromTimeline}
-          onTimeChange={setCurrentTime}
-          onUpdateSubtitleTime={handleUpdateSubtitleTime}
-          onAddSubtitle={handleAddSubtitle}
-          isReadOnly={isReadOnly}
-        />
+        {/* Collapsed Panel Tabs - 固定在页面最右边 */}
+        {(panelCollapsed.onscreen || panelCollapsed.glossary || panelCollapsed.episode) && (
+          <div className="flex flex-col border-l border-border bg-muted/30 shrink-0">
+            {panelCollapsed.onscreen && (
+              <button
+                onClick={() => handleTogglePanelCollapse("onscreen")}
+                className="px-2 py-4 border-b border-border hover:bg-accent transition-colors"
+                style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
+              >
+                <span className="text-xs font-medium">画面字</span>
+              </button>
+            )}
+            {panelCollapsed.glossary && (
+              <button
+                onClick={() => handleTogglePanelCollapse("glossary")}
+                className="px-2 py-4 border-b border-border hover:bg-accent transition-colors"
+                style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
+              >
+                <span className="text-xs font-medium">术语表</span>
+              </button>
+            )}
+            {panelCollapsed.episode && (
+              <button
+                onClick={() => handleTogglePanelCollapse("episode")}
+                className="px-2 py-4 hover:bg-accent transition-colors"
+                style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
+              >
+                <span className="text-xs font-medium">选集</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
       
       {/* 译员评分对话框 */}

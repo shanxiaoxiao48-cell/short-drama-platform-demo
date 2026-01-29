@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Plus, Copy } from "lucide-react"
+import { Plus, Copy, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface OnScreenTextPanelProps {
@@ -19,6 +19,10 @@ interface OnScreenTextPanelProps {
   }>
   isReadOnly?: boolean // 只读模式
   showTranslation?: boolean // 是否显示翻译
+  onAddSubtitle?: (track: "original" | "translated" | "onscreen", startTime: number, endTime: number) => void // 添加字幕回调
+  duration?: number // 视频时长
+  onCollapse?: () => void // 收起面板回调
+  isReview?: boolean // AI提取待确认状态
 }
 
 export function OnScreenTextPanel({
@@ -26,6 +30,10 @@ export function OnScreenTextPanel({
   onScreenText,
   isReadOnly = false,
   showTranslation = false,
+  onAddSubtitle,
+  duration = 180,
+  onCollapse,
+  isReview = false,
 }: OnScreenTextPanelProps) {
   // 本地状态管理画面字的翻译
   const [translations, setTranslations] = useState<Record<string, string>>(() => {
@@ -56,12 +64,35 @@ export function OnScreenTextPanel({
       <div className="p-3 border-b border-border shrink-0">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-foreground">画面字</h3>
-          {!isReadOnly && (
-            <Button variant="ghost" size="sm" className="h-7">
-              <Plus className="w-3 h-3 mr-1" />
-              添加
-            </Button>
-          )}
+          <div className="flex items-center gap-1">
+            {!isReadOnly && onAddSubtitle && (
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => {
+                  // 在当前时间添加画面字（默认3秒）
+                  const startTime = currentTime
+                  const endTime = Math.min(currentTime + 3, duration)
+                  onAddSubtitle("onscreen", startTime, endTime)
+                }}
+                title="添加画面字"
+              >
+                <Plus className="w-3 h-3" />
+              </Button>
+            )}
+            {onCollapse && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-7 w-7"
+                onClick={onCollapse}
+                title="收起面板"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 

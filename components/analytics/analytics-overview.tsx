@@ -134,7 +134,7 @@ export function AnalyticsOverview({ onNavigateToDataList, onNavigateToTranslator
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
           {/* 核心数据概览卡片组 - 8张卡片，响应式布局 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {overviewCards.map((card, index) => {
               const Icon = card.icon
               return (
@@ -145,17 +145,17 @@ export function AnalyticsOverview({ onNavigateToDataList, onNavigateToTranslator
                   {card.alert && (
                     <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
                   )}
-                  <CardHeader className="flex flex-row items-center justify-between pb-1.5 pt-3 px-4">
-                    <CardTitle className="text-xs font-medium text-muted-foreground">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-5">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
                       {card.title}
                     </CardTitle>
-                    <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+                    <Icon className="w-4 h-4 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent className="px-4 pb-3">
-                    <div className="flex items-baseline gap-2">
-                      <div className="text-xl font-bold">{card.value}</div>
+                  <CardContent className="px-5 pb-4">
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <div className="text-3xl font-bold">{card.value}</div>
                       {card.trend && (
-                        <span className={`text-xs font-medium ${
+                        <span className={`text-sm font-semibold ${
                           card.trend.startsWith('+') ? 'text-green-600' : 
                           card.trend.startsWith('-') && card.title.includes('时长') ? 'text-green-600' :
                           'text-muted-foreground'
@@ -164,7 +164,7 @@ export function AnalyticsOverview({ onNavigateToDataList, onNavigateToTranslator
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
                       {card.subtitle}
                     </p>
                   </CardContent>

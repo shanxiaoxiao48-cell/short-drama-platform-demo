@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Check, ChevronDown, ChevronUp } from "lucide-react"
+import { Check, ChevronDown, ChevronUp, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { SubtitleStylePanel, SubtitleStyle } from "./subtitle-style-panel"
 
@@ -11,24 +11,28 @@ interface EpisodeSelectorPanelProps {
   currentEpisode: number
   totalEpisodes: number
   completedEpisodes?: number[] // 已完成的集数列表
+  rejectedEpisodes?: number[] // 驳回的集数列表（质检环节）
   subtitleStyle: SubtitleStyle
   onStyleChange: (style: SubtitleStyle) => void
   onEpisodeChange?: (episode: number) => void
   showStylePanel?: boolean // 是否显示字幕样式面板
   showCompletedMarks?: boolean // 是否显示已完成的打勾标记
   showViewAllButton?: boolean // 是否显示查看全部按钮
+  onCollapse?: () => void // 收起面板回调
 }
 
 export function EpisodeSelectorPanel({
   currentEpisode,
   totalEpisodes,
   completedEpisodes = [],
+  rejectedEpisodes = [],
   subtitleStyle,
   onStyleChange,
   onEpisodeChange,
   showStylePanel = true, // 默认显示字幕样式面板
   showCompletedMarks = true, // 默认显示已完成标记
   showViewAllButton = true, // 默认显示查看全部按钮
+  onCollapse,
 }: EpisodeSelectorPanelProps) {
   const [showAll, setShowAll] = useState(false)
   
@@ -107,14 +111,28 @@ export function EpisodeSelectorPanel({
 
   const visibleEpisodes = getVisibleEpisodes()
   const isEpisodeCompleted = (ep: number) => completedEpisodes.includes(ep)
+  const isEpisodeRejected = (ep: number) => rejectedEpisodes.includes(ep)
 
   return (
     <div className="flex flex-col h-full bg-card border-l border-border">
       {/* Header - 与术语表标题保持一致 */}
       <div className="px-3 py-2 border-b border-border shrink-0">
-        <h4 className="text-sm font-medium text-foreground">
-          选集 <span className="text-xs text-muted-foreground">({totalEpisodes}集)</span>
-        </h4>
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-medium text-foreground">
+            选集 <span className="text-xs text-muted-foreground">({totalEpisodes}集)</span>
+          </h4>
+          {onCollapse && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-7 w-7"
+              onClick={onCollapse}
+              title="收起面板"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Scrollable area - 占据剩余空间 */}
@@ -145,6 +163,7 @@ export function EpisodeSelectorPanel({
                 }
                 
                 const isCompleted = isEpisodeCompleted(ep)
+                const isRejected = isEpisodeRejected(ep)
                 const isCurrent = ep === currentEpisode
                 
                 return (
@@ -155,12 +174,13 @@ export function EpisodeSelectorPanel({
                     className={cn(
                       "h-8 w-8 aspect-square p-0 text-[10px] relative transition-all",
                       isCompleted && !isCurrent && showCompletedMarks && "border-success text-success",
+                      isRejected && !isCurrent && "border-destructive text-destructive bg-destructive/10",
                       !isCurrent && "hover:border-primary hover:border-2"
                     )}
                     onClick={() => handleEpisodeClick(ep, index)}
                   >
                     {ep}
-                    {isCompleted && showCompletedMarks && (
+                    {isCompleted && showCompletedMarks && !isRejected && (
                       <Check className="w-1.5 h-1.5 absolute top-0 right-0" />
                     )}
                   </Button>

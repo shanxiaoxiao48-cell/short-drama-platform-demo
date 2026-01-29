@@ -28,6 +28,7 @@ export interface TranslatorTask {
   workDuration: number
   modificationRate: number
   rejectionRate: number
+  completionRate: number
   settlementAmount: number
   startedAt: string
   completedAt: string
@@ -38,7 +39,7 @@ interface TranslatorTaskListProps {
   tasks: TranslatorTask[]
 }
 
-type SortField = "videoDuration" | "workDuration" | "modificationRate" | "rejectionRate" | "settlementAmount" | "startedAt" | "completedAt"
+type SortField = "videoDuration" | "workDuration" | "completionRate" | "modificationRate" | "rejectionRate" | "settlementAmount" | "startedAt" | "completedAt"
 type SortOrder = "asc" | "desc"
 
 const getStatusBadge = (status: string) => {
@@ -129,6 +130,7 @@ export function TranslatorTaskList({ tasks }: TranslatorTaskListProps) {
       settlementAmount: validTasks.reduce((sum, t) => sum + (t?.settlementAmount || 0), 0),
       avgModificationRate: validTasks.length > 0 ? validTasks.reduce((sum, t) => sum + (t?.modificationRate || 0), 0) / validTasks.length : 0,
       avgRejectionRate: validTasks.length > 0 ? validTasks.reduce((sum, t) => sum + (t?.rejectionRate || 0), 0) / validTasks.length : 0,
+      avgCompletionRate: validTasks.length > 0 ? validTasks.reduce((sum, t) => sum + (t?.completionRate || 0), 0) / validTasks.length : 0,
     }
   }, [filteredTasks])
 
@@ -162,6 +164,7 @@ export function TranslatorTaskList({ tasks }: TranslatorTaskListProps) {
                 <th className="text-left py-3 px-2 font-medium text-muted-foreground">语种</th>
                 <th className="text-left py-3 px-2 font-medium text-muted-foreground"><button onClick={() => handleSort("videoDuration")} className="flex items-center gap-1 hover:text-foreground">视频时长 {getSortIcon("videoDuration")}</button></th>
                 <th className="text-left py-3 px-2 font-medium text-muted-foreground"><button onClick={() => handleSort("workDuration")} className="flex items-center gap-1 hover:text-foreground">有效工作时长 {getSortIcon("workDuration")}</button></th>
+                <th className="text-left py-3 px-2 font-medium text-muted-foreground"><button onClick={() => handleSort("completionRate")} className="flex items-center gap-1 hover:text-foreground">完播率 {getSortIcon("completionRate")}</button></th>
                 <th className="text-left py-3 px-2 font-medium text-muted-foreground"><button onClick={() => handleSort("modificationRate")} className="flex items-center gap-1 hover:text-foreground">修改率 {getSortIcon("modificationRate")}</button></th>
                 <th className="text-left py-3 px-2 font-medium text-muted-foreground"><button onClick={() => handleSort("rejectionRate")} className="flex items-center gap-1 hover:text-foreground">返修率 {getSortIcon("rejectionRate")}</button></th>
                 <th className="text-left py-3 px-2 font-medium text-muted-foreground"><button onClick={() => handleSort("settlementAmount")} className="flex items-center gap-1 hover:text-foreground">结算金额 {getSortIcon("settlementAmount")}</button></th>
@@ -178,6 +181,7 @@ export function TranslatorTaskList({ tasks }: TranslatorTaskListProps) {
                   <td className="py-3 px-2"><Badge variant="outline" className="text-xs">{task.language}</Badge></td>
                   <td className="py-3 px-2">{formatMinutesToHoursAndMinutes(task.videoDuration)}</td>
                   <td className="py-3 px-2">{formatMinutesToHoursAndMinutes(Math.round(task.workDuration * 60))}</td>
+                  <td className="py-3 px-2"><span className={task.completionRate >= 80 ? "text-green-600 font-semibold" : task.completionRate < 60 ? "text-red-600 font-semibold" : ""}>{task.completionRate.toFixed(1)}%</span></td>
                   <td className="py-3 px-2"><span className={task.modificationRate < 10 ? "text-green-600 font-semibold" : ""}>{task.modificationRate.toFixed(1)}%</span></td>
                   <td className="py-3 px-2"><span className={task.rejectionRate < 5 ? "text-green-600 font-semibold" : task.rejectionRate > 8 ? "text-red-600 font-semibold" : ""}>{task.rejectionRate.toFixed(1)}%</span></td>
                   <td className="py-3 px-2 font-semibold text-green-600">¥{task.settlementAmount.toLocaleString()}</td>
@@ -185,7 +189,7 @@ export function TranslatorTaskList({ tasks }: TranslatorTaskListProps) {
                   <td className="py-3 px-2 text-xs">{task.completedAt}</td>
                   <td className="py-3 px-2">{getStatusBadge(task.status)}</td>
                 </tr>
-              ))) : (<tr><td colSpan={11} className="py-8 text-center text-muted-foreground">暂无任务数据</td></tr>)}
+              ))) : (<tr><td colSpan={12} className="py-8 text-center text-muted-foreground">暂无任务数据</td></tr>)}
             </tbody>
             {paginatedTasks.length > 0 && (
               <tfoot>
@@ -193,6 +197,7 @@ export function TranslatorTaskList({ tasks }: TranslatorTaskListProps) {
                   <td className="py-3 px-2" colSpan={3}>合计 ({totals.tasks}个任务)</td>
                   <td className="py-3 px-2">{formatMinutesToHoursAndMinutes(totals.videoDuration)}</td>
                   <td className="py-3 px-2">{formatMinutesToHoursAndMinutes(Math.round(totals.workDuration * 60))}</td>
+                  <td className="py-3 px-2">{totals.avgCompletionRate.toFixed(1)}%</td>
                   <td className="py-3 px-2">{totals.avgModificationRate.toFixed(1)}%</td>
                   <td className="py-3 px-2">{totals.avgRejectionRate.toFixed(1)}%</td>
                   <td className="py-3 px-2 text-lg text-green-600">¥{totals.settlementAmount.toLocaleString()}</td>

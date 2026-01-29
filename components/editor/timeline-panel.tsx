@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
-import { Eye, EyeOff, Plus } from "lucide-react"
+import { Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface SubtitleBlock {
@@ -25,6 +25,13 @@ interface TimelinePanelProps {
   onUpdateSubtitleTime?: (id: string, startTime: number, endTime: number) => void
   onAddSubtitle?: (track: "original" | "translated" | "onscreen", startTime: number, endTime: number) => void
   isReadOnly?: boolean // 只读模式
+  // 字幕可见性控制（控制视频预览中的字幕显示）
+  subtitleVisibility?: {
+    original: boolean
+    translated: boolean
+    onscreen: boolean
+  }
+  onToggleSubtitleVisibility?: (track: "original" | "translated" | "onscreen") => void
 }
 
 export function TimelinePanel({
@@ -39,6 +46,8 @@ export function TimelinePanel({
   onUpdateSubtitleTime,
   onAddSubtitle,
   isReadOnly = false, // 默认可编辑
+  subtitleVisibility = { original: false, translated: true, onscreen: true }, // 默认值
+  onToggleSubtitleVisibility,
 }: TimelinePanelProps) {
   const timelineRef = useRef<HTMLDivElement>(null)
   const tracksRef = useRef<HTMLDivElement>(null)
@@ -48,12 +57,16 @@ export function TimelinePanel({
   const [resizeStartX, setResizeStartX] = useState(0)
   const [resizeStartTime, setResizeStartTime] = useState(0)
   
-  // 轨道显示/隐藏状态 - 源语言轨道默认隐藏
-  const [trackVisibility, setTrackVisibility] = useState({
-    original: false, // 源语言默认隐藏
-    translated: true,
-    onscreen: true,
-  })
+  // 字幕拖动状态
+  const [draggingSubtitle, setDraggingSubtitle] = useState<{
+    id: string
+    startX: number
+    originalStartTime: number
+    originalEndTime: number
+    track: "original" | "translated" | "onscreen"
+  } | null>(null)
+  
+  // 轨道在时间轴中始终显示，不再需要本地可见性状态
   
   const basePixelsPerSecond = 100
   const pixelsPerSecond = basePixelsPerSecond * zoomLevel
@@ -101,24 +114,7 @@ export function TimelinePanel({
     onSelectSubtitle(id)
     onTimeChange(startTime)
   }
-  
-  // 切换轨道显示/隐藏
-  const toggleTrackVisibility = (track: "original" | "translated" | "onscreen") => {
-    setTrackVisibility(prev => ({
-      ...prev,
-      [track]: !prev[track]
-    }))
-  }
-  
-  // 在光标位置添加字幕（默认2秒）
-  const handleAddSubtitleAtCursor = (track: "original" | "translated" | "onscreen") => {
-    if (!onAddSubtitle || isReadOnly) return
-    
-    const startTime = currentTime
-    const endTime = Math.min(currentTime + 2, duration) // 默认2秒，不超过总时长
-    
-    onAddSubtitle(track, startTime, endTime)
-  }
+
 
   // Auto-scroll both timeline and tracks to current time
   useEffect(() => {
@@ -200,6 +196,65 @@ export function TimelinePanel({
     }
   }, [resizing, resizeStartX, resizeStartTime, pixelsPerSecond, originalSubtitles, translatedSubtitles, onScreenText, duration, onUpdateSubtitleTime])
 
+  // Handle subtitle dragging (moving position)
+  useEffect(() => {
+    if (!draggingSubtitle) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!timelineRef.current || !onUpdateSubtitleTime) return
+      const rect = timelineRef.current.getBoundingClientRect()
+      const x = e.clientX - rect.left + timelineRef.current.scrollLeft
+      const deltaX = x - draggingSubtitle.startX
+      const deltaTime = deltaX / pixelsPerSecond
+
+      const subtitleDuration = draggingSubtitle.originalEndTime - draggingSubtitle.originalStartTime
+      let newStartTime = draggingSubtitle.originalStartTime + deltaTime
+      let newEndTime = draggingSubtitle.originalEndTime + deltaTime
+
+      // 限制在视频时长内
+      if (newStartTime < 0) {
+        newStartTime = 0
+        newEndTime = subtitleDuration
+      }
+      if (newEndTime > duration) {
+        newEndTime = duration
+        newStartTime = duration - subtitleDuration
+      }
+
+      // 碰撞检测 - 获取同轨道的其他字幕
+      let trackSubtitles: SubtitleBlock[] = []
+      if (draggingSubtitle.track === "original") {
+        trackSubtitles = originalSubtitles.filter(s => s.id !== draggingSubtitle.id)
+      } else if (draggingSubtitle.track === "translated") {
+        trackSubtitles = translatedSubtitles.filter(s => s.id !== draggingSubtitle.id)
+      } else {
+        trackSubtitles = onScreenText.filter(s => s.id !== draggingSubtitle.id)
+      }
+
+      // 检查是否与其他字幕重叠
+      const hasCollision = trackSubtitles.some(sub =>
+        newStartTime < sub.endTime && sub.startTime < newEndTime
+      )
+
+      // 如果没有碰撞，更新位置
+      if (!hasCollision) {
+        onUpdateSubtitleTime(draggingSubtitle.id, newStartTime, newEndTime)
+      }
+    }
+
+    const handleMouseUp = () => {
+      setDraggingSubtitle(null)
+    }
+
+    document.addEventListener("mousemove", handleMouseMove)
+    document.addEventListener("mouseup", handleMouseUp)
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove)
+      document.removeEventListener("mouseup", handleMouseUp)
+    }
+  }, [draggingSubtitle, pixelsPerSecond, originalSubtitles, translatedSubtitles, onScreenText, duration, onUpdateSubtitleTime])
+
   const renderTrack = (
     subtitles: SubtitleBlock[],
     label: string,
@@ -216,97 +271,117 @@ export function TimelinePanel({
             <span className="text-xs font-medium text-foreground">{label}</span>
           </div>
           <div className="flex items-center gap-1">
-            {/* 添加字幕按钮 - 只读模式下不显示 */}
-            {!isReadOnly && onAddSubtitle && (
+            {/* 显示/隐藏按钮 - 控制视频预览中的字幕显示 */}
+            {onToggleSubtitleVisibility && (
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-5 w-5 hover:bg-accent"
-                onClick={() => handleAddSubtitleAtCursor(trackType)}
-                title="在光标位置添加字幕"
+                onClick={() => onToggleSubtitleVisibility(trackType)}
+                title={isVisible ? "隐藏字幕" : "显示字幕"}
               >
-                <Plus className="w-3 h-3" />
+                {isVisible ? (
+                  <Eye className="w-3 h-3" />
+                ) : (
+                  <EyeOff className="w-3 h-3 opacity-50" />
+                )}
               </Button>
             )}
-            {/* 显示/隐藏按钮 */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-5 w-5 hover:bg-accent"
-              onClick={() => toggleTrackVisibility(trackType)}
-              title={isVisible ? "隐藏轨道" : "显示轨道"}
-            >
-              {isVisible ? (
-                <Eye className="w-3 h-3" />
-              ) : (
-                <EyeOff className="w-3 h-3 opacity-50" />
-              )}
-            </Button>
           </div>
         </div>
 
-        {/* Track content - 隐藏时显示空轨道 */}
+        {/* Track content - 始终显示所有轨道 */}
         <div className="relative flex-1 h-12 overflow-hidden bg-card">
-          {isVisible && (
-            <div className="absolute inset-0">
-              {subtitles.map((subtitle) => {
-                const left = subtitle.startTime * pixelsPerSecond
-                const width = (subtitle.endTime - subtitle.startTime) * pixelsPerSecond
-                // 只有完全匹配的块才会被选中
-                const isSelected = subtitle.id === selectedId
+          <div className="absolute inset-0">
+            {subtitles.map((subtitle) => {
+              const left = subtitle.startTime * pixelsPerSecond
+              const width = (subtitle.endTime - subtitle.startTime) * pixelsPerSecond
+              // 只有完全匹配的块才会被选中
+              const isSelected = subtitle.id === selectedId
 
-                return (
-                  <div
-                    key={subtitle.id}
-                    className={cn(
-                      "absolute top-1 h-10 rounded border-2 cursor-pointer transition-all overflow-hidden group",
-                      isSelected
-                        ? "border-primary bg-primary/30 shadow-lg z-10"
-                        : "border-border bg-primary/10 hover:bg-primary/15"
-                    )}
-                    style={{
-                      left: `${left}px`,
-                      width: `${width}px`,
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleSubtitleClick(subtitle.id, subtitle.startTime, e)
-                    }}
-                  >
-                    {/* Left edge resize handle - 只读模式下不显示 */}
-                    {isSelected && !isReadOnly && (
-                      <div
-                        className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-primary/50 z-20"
-                        onMouseDown={(e) => {
-                          e.stopPropagation()
-                          setResizing({ id: subtitle.id, edge: "left" })
-                          setResizeStartX(e.clientX - (timelineRef.current?.getBoundingClientRect().left || 0) + (timelineRef.current?.scrollLeft || 0))
-                          setResizeStartTime(subtitle.startTime)
-                        }}
-                      />
-                    )}
+              return (
+                <div
+                  key={subtitle.id}
+                  className={cn(
+                    "absolute top-1 h-10 rounded border-2 transition-all overflow-hidden group",
+                    isSelected
+                      ? "border-primary bg-primary/30 shadow-lg z-10"
+                      : "border-border bg-primary/10 hover:bg-primary/15",
+                    draggingSubtitle?.id === subtitle.id
+                      ? "cursor-grabbing opacity-70 shadow-2xl"
+                      : "cursor-grab"
+                  )}
+                  style={{
+                    left: `${left}px`,
+                    width: `${width}px`,
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleSubtitleClick(subtitle.id, subtitle.startTime, e)
+                  }}
+                  onMouseDown={(e) => {
+                    // 只读模式下不允许拖动
+                    if (isReadOnly) return
                     
-                    <div className="px-2 py-1 h-full flex items-center">
-                      <p className="text-xs text-foreground truncate">{subtitle.text}</p>
-                    </div>
-
-                    {/* Right edge resize handle - 只读模式下不显示 */}
-                    {isSelected && !isReadOnly && (
-                      <div
-                        className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-primary/50 z-20"
-                        onMouseDown={(e) => {
-                          e.stopPropagation()
-                          setResizing({ id: subtitle.id, edge: "right" })
-                          setResizeStartX(e.clientX - (timelineRef.current?.getBoundingClientRect().left || 0) + (timelineRef.current?.scrollLeft || 0))
-                          setResizeStartTime(subtitle.endTime)
-                        }}
-                      />
-                    )}
+                    // 检查是否点击在边缘（resize区域）
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    const clickX = e.clientX - rect.left
+                    const isLeftEdge = clickX < 8 // 左边缘8px
+                    const isRightEdge = clickX > rect.width - 8 // 右边缘8px
+                    
+                    // 如果点击在边缘，不启动拖动（让resize处理）
+                    if (isLeftEdge || isRightEdge) return
+                    
+                    // 启动拖动
+                    e.stopPropagation()
+                    const timelineRect = timelineRef.current?.getBoundingClientRect()
+                    if (!timelineRect) return
+                    
+                    setDraggingSubtitle({
+                      id: subtitle.id,
+                      startX: e.clientX - timelineRect.left + (timelineRef.current?.scrollLeft || 0),
+                      originalStartTime: subtitle.startTime,
+                      originalEndTime: subtitle.endTime,
+                      track: trackType
+                    })
+                    
+                    // 选中字幕
+                    onSelectSubtitle(subtitle.id)
+                  }}
+                >
+                  {/* Left edge resize handle - 只读模式下不显示 */}
+                  {isSelected && !isReadOnly && (
+                    <div
+                      className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-primary/50 z-20"
+                      onMouseDown={(e) => {
+                        e.stopPropagation()
+                        setResizing({ id: subtitle.id, edge: "left" })
+                        setResizeStartX(e.clientX - (timelineRef.current?.getBoundingClientRect().left || 0) + (timelineRef.current?.scrollLeft || 0))
+                        setResizeStartTime(subtitle.startTime)
+                      }}
+                    />
+                  )}
+                  
+                  <div className="px-2 py-1 h-full flex items-center">
+                    <p className="text-xs text-foreground truncate">{subtitle.text}</p>
                   </div>
-                )
-              })}
-            </div>
-          )}
+
+                  {/* Right edge resize handle - 只读模式下不显示 */}
+                  {isSelected && !isReadOnly && (
+                    <div
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-primary/50 z-20"
+                      onMouseDown={(e) => {
+                        e.stopPropagation()
+                        setResizing({ id: subtitle.id, edge: "right" })
+                        setResizeStartX(e.clientX - (timelineRef.current?.getBoundingClientRect().left || 0) + (timelineRef.current?.scrollLeft || 0))
+                        setResizeStartTime(subtitle.endTime)
+                      }}
+                    />
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
       </div>
     )
@@ -395,9 +470,9 @@ export function TimelinePanel({
         }}
       >
         <div style={{ width: `${duration * pixelsPerSecond + 96}px` }}>
-          {renderTrack(originalSubtitles, "原文", "bg-blue-500", "original", trackVisibility.original)}
-          {renderTrack(translatedSubtitles, "译文", "bg-green-500", "translated", trackVisibility.translated)}
-          {renderTrack(onScreenText, "画面字", "bg-orange-500", "onscreen", trackVisibility.onscreen)}
+          {renderTrack(originalSubtitles, "原文", "bg-blue-500", "original", subtitleVisibility.original)}
+          {renderTrack(translatedSubtitles, "译文", "bg-green-500", "translated", subtitleVisibility.translated)}
+          {renderTrack(onScreenText, "画面字", "bg-orange-500", "onscreen", subtitleVisibility.onscreen)}
         </div>
       </div>
 
