@@ -416,6 +416,16 @@ export const mockAdSpends: AdSpend[] = [
 // 任务数据（暂时为空，后续可扩展）
 export const mockTasks: Task[] = []
 
+// 语种分布数据
+export const languageDistributionData = [
+  { language: "英语", count: 4, percentage: 36 },
+  { language: "西班牙语", count: 2, percentage: 18 },
+  { language: "日语", count: 2, percentage: 18 },
+  { language: "韩语", count: 1, percentage: 9 },
+  { language: "葡萄牙语", count: 1, percentage: 9 },
+  { language: "法语", count: 1, percentage: 9 },
+]
+
 // 完整的原始数据
 export const mockRawAnalyticsData: RawAnalyticsData = {
   dramas: mockDramas,

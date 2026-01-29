@@ -18,7 +18,8 @@ import { TaskEfficiencyChart } from "./charts/task-efficiency-chart"
 import { TaskStatusChart } from "./charts/task-status-chart"
 import { TranslatorComparisonChart } from "./charts/translator-comparison-chart"
 import { EfficiencyRatingChart } from "./charts/efficiency-rating-chart"
-import { translatorStats } from "@/lib/mock-analytics-data"
+import { LanguageDistributionChart } from "./charts/language-distribution-chart"
+import { translatorStats, languageDistributionData } from "@/lib/mock-analytics-data"
 
 interface AnalyticsOverviewProps {
   onNavigateToDataList?: (stageFilter?: string, dateRange?: { from: Date; to: Date }) => void
@@ -249,11 +250,26 @@ export function AnalyticsOverview({ onNavigateToDataList, onNavigateToTranslator
               </CardContent>
             </Card>
 
-            {/* 图表5、6、7已隐藏 - 根据产品需求简化页面展示 */}
+            {/* 图表5：饼图 - 语种分布 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+                  <PieChart className="w-4 h-4" />
+                  语种分布
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64 sm:h-72 lg:h-80">
+                  <LanguageDistributionChart data={languageDistributionData} />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 图表6、7已隐藏 - 根据产品需求简化页面展示 */}
             {/* 
-            图表5：散点图 - 翻译质量vs投放消耗相关性
-            图表6：双折线图 - 派单量vs完成量趋势
-            图表7：条形图 - 译员综合ROI排名
+            图表6：散点图 - 翻译质量vs投放消耗相关性
+            图表7：双折线图 - 派单量vs完成量趋势
+            图表8：条形图 - 译员综合ROI排名
             */}
           </div>
         </div>
