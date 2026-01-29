@@ -7,7 +7,11 @@ import { ProjectsPage } from "@/components/projects/projects-page"
 import { WorkspacePage } from "@/components/workspace/workspace-page"
 import { EditorPage } from "@/components/editor/editor-page"
 import { TasksPage } from "@/components/tasks/tasks-page"
-import { AnalyticsDashboard } from "@/components/analytics/analytics-dashboard"
+import { AnalyticsOverview } from "@/components/analytics/analytics-overview"
+import { AnalyticsDataList } from "@/components/analytics/analytics-data-list"
+import { AnalyticsTranslatorPerformanceV2 } from "@/components/analytics/analytics-translator-performance-v2"
+import { AnalyticsBusinessEffect } from "@/components/analytics/analytics-business-effect"
+import { TranslatorDetailPage } from "@/components/analytics/translator-detail-page"
 import {
   TaskListPage,
   AIExtractDetailPage,
@@ -55,9 +59,88 @@ export function AppShell({ initialPage = "dashboard" }: AppShellProps) {
   const [currentEpisodeIndex, setCurrentEpisodeIndex] = useState(0)
   const totalEpisodes = 10 // Mock total episodes
 
+  // 任务进度页面筛选状态
+  const [taskProgressFilterDrama, setTaskProgressFilterDrama] = useState<string | undefined>(undefined)
+  const [taskProgressFilterLanguage, setTaskProgressFilterLanguage] = useState<string | undefined>(undefined)
+  
+  // 短剧进度页面筛选状态
+  const [dramaProgressFilterStage, setDramaProgressFilterStage] = useState<string | undefined>(undefined)
+  const [dramaProgressFilterDateRange, setDramaProgressFilterDateRange] = useState<{ from: Date; to: Date } | undefined>(undefined)
+  
+  // 译员绩效页面筛选状态
+  const [translatorPerformanceFilter, setTranslatorPerformanceFilter] = useState<string | undefined>(undefined)
+  
+  // 投放效果页面筛选状态
+  const [businessEffectFilterDrama, setBusinessEffectFilterDrama] = useState<string | undefined>(undefined)
+  const [businessEffectFilterLanguage, setBusinessEffectFilterLanguage] = useState<string | undefined>(undefined)
+  
+  // 译员详情页面状态
+  const [selectedTranslatorId, setSelectedTranslatorId] = useState<string | null>(null)
+  const [translatorDetailSource, setTranslatorDetailSource] = useState<"standalone" | "datalist">("standalone")
+
   const handleNavigate = (page: PageType) => {
     setCurrentPage(page)
     setDetailPage(null)
+    // 清除任务进度页面的筛选
+    if (page !== "analytics-task-progress") {
+      setTaskProgressFilterDrama(undefined)
+      setTaskProgressFilterLanguage(undefined)
+    }
+    // 清除短剧进度页面的筛选
+    if (page !== "analytics-data-list") {
+      setDramaProgressFilterStage(undefined)
+      setDramaProgressFilterDateRange(undefined)
+    }
+    // 清除译员绩效页面的筛选
+    if (page !== "analytics-translator-performance") {
+      setTranslatorPerformanceFilter(undefined)
+    }
+    // 清除投放效果页面的筛选
+    if (page !== "analytics-business-effect") {
+      setBusinessEffectFilterDrama(undefined)
+      setBusinessEffectFilterLanguage(undefined)
+    }
+  }
+
+  // 从概览页面跳转到短剧进度页面（数据列表）
+  const handleNavigateToDataList = (stageFilter?: string, dateRange?: { from: Date; to: Date }) => {
+    setDramaProgressFilterStage(stageFilter)
+    setDramaProgressFilterDateRange(dateRange)
+    setCurrentPage("analytics-data-list")
+  }
+
+  // 从概览页面跳转到译员绩效页面
+  const handleNavigateToTranslatorPerformance = (translatorName?: string) => {
+    setTranslatorPerformanceFilter(translatorName)
+    setCurrentPage("analytics-translator-performance")
+  }
+  
+  // 从译员绩效页面跳转到译员详情页面
+  const handleNavigateToTranslatorDetail = (translatorName: string) => {
+    setSelectedTranslatorId(translatorName)
+    setTranslatorDetailSource("standalone")
+    setCurrentPage("analytics-translator-detail")
+  }
+
+  // 从概览页面跳转到投放效果页面
+  const handleNavigateToBusinessEffect = (drama?: string, language?: string) => {
+    setBusinessEffectFilterDrama(drama)
+    setBusinessEffectFilterLanguage(language)
+    setCurrentPage("analytics-business-effect")
+  }
+
+  // 从短剧进度页面跳转到任务进度页面
+  const handleNavigateToTaskProgress = (dramaName: string, language: string) => {
+    setTaskProgressFilterDrama(dramaName)
+    setTaskProgressFilterLanguage(language)
+    // 保持在analytics-data-list页面，不改变currentPage
+  }
+
+  // 从短剧进度或任务进度页面跳转到译员详情页面
+  const handleNavigateToTranslatorFromList = (translatorName: string) => {
+    setSelectedTranslatorId(translatorName)
+    setTranslatorDetailSource("datalist")
+    setCurrentPage("analytics-translator-detail")
   }
 
   const handleOpenWorkspace = (projectId: string) => {
@@ -277,8 +360,46 @@ export function AppShell({ initialPage = "dashboard" }: AppShellProps) {
     switch (currentPage) {
       case "dashboard":
         return <Dashboard onOpenWorkspace={handleOpenWorkspace} onNavigateToProjects={handleNavigateToProjects} />
-      case "analytics":
-        return <AnalyticsDashboard />
+      case "analytics-overview":
+        return <AnalyticsOverview 
+          onNavigateToDataList={handleNavigateToDataList}
+          onNavigateToTranslatorPerformance={handleNavigateToTranslatorPerformance}
+          onNavigateToBusinessEffect={handleNavigateToBusinessEffect}
+        />
+      case "analytics-data-list":
+        return <AnalyticsDataList 
+          initialStageFilter={dramaProgressFilterStage}
+          initialDateRange={dramaProgressFilterDateRange}
+          initialTaskDramaFilter={taskProgressFilterDrama}
+          initialTaskLanguageFilter={taskProgressFilterLanguage}
+          initialTranslatorFilter={translatorPerformanceFilter}
+          onNavigateToDrama={handleNavigateToTaskProgress}
+          onNavigateToTranslator={handleNavigateToTranslatorFromList}
+        />
+      case "analytics-translator-performance":
+        return <AnalyticsTranslatorPerformanceV2 
+          initialTranslatorFilter={translatorPerformanceFilter}
+          onNavigateToTranslator={handleNavigateToTranslatorDetail}
+        />
+      case "analytics-translator-detail":
+        return selectedTranslatorId ? (
+          <TranslatorDetailPage 
+            translatorId={selectedTranslatorId}
+            fromDataList={translatorDetailSource === "datalist"}
+            onBack={() => {
+              if (translatorDetailSource === "datalist") {
+                setCurrentPage("analytics-data-list")
+              } else {
+                setCurrentPage("analytics-translator-performance")
+              }
+            }}
+          />
+        ) : null
+      case "analytics-business-effect":
+        return <AnalyticsBusinessEffect 
+          initialDramaFilter={businessEffectFilterDrama}
+          initialLanguageFilter={businessEffectFilterLanguage}
+        />
       case "projects":
         return <ProjectsPage onOpenWorkspace={handleOpenWorkspace} />
       case "workspace":
