@@ -28,7 +28,18 @@ import {
 } from "@/components/ui/select"
 import { ROLE_NAMES, UserRole } from "@/lib/permissions"
 
-export type PageType = "dashboard" | "projects" | "workspace" | "editor" | "tasks" | "novels" | "analytics"
+export type PageType = 
+  | "dashboard" 
+  | "projects" 
+  | "workspace" 
+  | "editor" 
+  | "tasks" 
+  | "novels" 
+  | "analytics-overview"
+  | "analytics-data-list"
+  | "analytics-translator-performance"
+  | "analytics-translator-detail"
+  | "analytics-business-effect"
 
 interface SidebarProps {
   currentPage: PageType
@@ -53,11 +64,14 @@ const navItems: NavItem[] = [
     label: "首页", 
     icon: LayoutDashboard 
   },
-  { 
-    id: "analytics",
+  {
     menuId: "analytics",
-    label: "仪表盘", 
-    icon: BarChart3 
+    label: "仪表盘",
+    icon: BarChart3,
+    children: [
+      { id: "analytics-overview", label: "概览" },
+      { id: "analytics-data-list", label: "数据列表" },
+    ],
   },
   { 
     id: "projects",
