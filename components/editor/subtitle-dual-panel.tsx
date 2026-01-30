@@ -589,28 +589,6 @@ export function SubtitleDualPanel({
                     历史版本
                   </Button>
                 )}
-                {/* 修改意见按钮 - 只在质检环节显示 */}
-                {isQualityCheck && (
-                  <Button 
-                    variant="ghost" 
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => {
-                      // 打开修改意见对话框（针对当前选中的字幕）
-                      const baseSelectedId = selectedId?.replace(/^(orig|trans|os)-/, "")
-                      const selectedSubtitle = subtitles.find(s => s.id === baseSelectedId)
-                      if (selectedSubtitle) {
-                        handleOpenCommentDialog(selectedSubtitle, {} as React.MouseEvent)
-                      } else if (subtitles.length > 0) {
-                        // 如果没有选中字幕，选择第一条
-                        handleOpenCommentDialog(subtitles[0], {} as React.MouseEvent)
-                      }
-                    }}
-                    title="修改意见"
-                  >
-                    <MessageSquare className="w-3 h-3" />
-                  </Button>
-                )}
                 {/* 清空译文按钮 - 只在人工翻译环节显示（非质检环节） */}
                 {!isReadOnly && !isQualityCheck && showTranslation && subtitles.length > 0 && (
                   <Button 

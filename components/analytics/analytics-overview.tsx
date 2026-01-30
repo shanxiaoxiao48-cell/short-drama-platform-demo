@@ -19,6 +19,7 @@ import { TaskStatusChart } from "./charts/task-status-chart"
 import { TranslatorComparisonChart } from "./charts/translator-comparison-chart"
 import { EfficiencyRatingChart } from "./charts/efficiency-rating-chart"
 import { LanguageDistributionChart } from "./charts/language-distribution-chart"
+import { TranslatorRatingChart } from "./charts/translator-rating-chart"
 import { translatorStats, languageDistributionData } from "@/lib/mock-analytics-data"
 
 interface AnalyticsOverviewProps {
@@ -265,7 +266,22 @@ export function AnalyticsOverview({ onNavigateToDataList, onNavigateToTranslator
               </CardContent>
             </Card>
 
-            {/* 图表6、7已隐藏 - 根据产品需求简化页面展示 */}
+            {/* 图表6：柱状图 - 译员评分分布 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4" />
+                  译员评分分布
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64 sm:h-72 lg:h-80">
+                  <TranslatorRatingChart onTranslatorClick={handleTranslatorClick} />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 图表7、8已隐藏 - 根据产品需求简化页面展示 */}
             {/* 
             图表6：散点图 - 翻译质量vs投放消耗相关性
             图表7：双折线图 - 派单量vs完成量趋势

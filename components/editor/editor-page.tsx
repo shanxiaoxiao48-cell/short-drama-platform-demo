@@ -3,6 +3,9 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Save, CheckCircle, Undo, Redo, Star } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import { VideoPlayerPanel } from "./video-player-panel"
 import { TimelinePanel } from "./timeline-panel"
 import { SubtitleDualPanel } from "./subtitle-dual-panel"
@@ -466,6 +469,10 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
   // 驳回的集数列表（质检环节使用）
   const [rejectedEpisodes, setRejectedEpisodes] = useState<number[]>([])
   
+  // 本集修改意见状态（质检环节驳回时使用）
+  const [episodeRejectionReason, setEpisodeRejectionReason] = useState("")
+  const [showRejectionDialog, setShowRejectionDialog] = useState(false)
+  
   const totalEpisodes = projectData.totalEpisodes // 使用项目的实际集数
   const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>({
     fontSize: 16,
@@ -767,6 +774,17 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
   
   // 审核环节：驳回本集
   const handleRejectEpisode = () => {
+    // 打开驳回对话框，让用户填写修改意见
+    setShowRejectionDialog(true)
+  }
+  
+  // 确认驳回本集（填写完修改意见后）
+  const handleConfirmRejectEpisode = () => {
+    if (!episodeRejectionReason.trim()) {
+      alert("请填写驳回理由")
+      return
+    }
+    
     // 标记当前集为驳回
     if (!rejectedEpisodes.includes(currentEpisode)) {
       setRejectedEpisodes([...rejectedEpisodes, currentEpisode])
@@ -774,6 +792,10 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
     
     // 从已完成列表中移除（如果存在）
     setCompletedEpisodes(completedEpisodes.filter(ep => ep !== currentEpisode))
+    
+    // 关闭对话框并清空理由
+    setShowRejectionDialog(false)
+    setEpisodeRejectionReason("")
     
     // 自动跳转到下一集
     if (currentEpisode < totalEpisodes) {
@@ -1211,6 +1233,48 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
         onApprove={handleApproveReview}
         onReject={handleRejectReview}
       />
+      
+      {/* 驳回本集对话框 */}
+      <Dialog open={showRejectionDialog} onOpenChange={setShowRejectionDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>驳回第{currentEpisode}集</DialogTitle>
+            <DialogDescription>
+              请填写本集的修改意见，帮助译员了解需要改进的地方
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="rejection-reason">修改意见</Label>
+              <Textarea
+                id="rejection-reason"
+                placeholder="请详细说明需要修改的内容..."
+                value={episodeRejectionReason}
+                onChange={(e) => setEpisodeRejectionReason(e.target.value)}
+                rows={6}
+                className="resize-none"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowRejectionDialog(false)
+                setEpisodeRejectionReason("")
+              }}
+            >
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmRejectEpisode}
+            >
+              确认驳回
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
