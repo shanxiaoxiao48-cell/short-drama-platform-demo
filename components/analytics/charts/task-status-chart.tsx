@@ -116,7 +116,7 @@ export function TaskStatusChart({
         <Legend
           verticalAlign="bottom"
           height={36}
-          wrapperStyle={{ fontSize: 12 }}
+          wrapperStyle={{ fontSize: 12, color: "hsl(var(--foreground))" }}
           iconType="circle"
         />
       </PieChart>

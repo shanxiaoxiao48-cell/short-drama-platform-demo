@@ -79,7 +79,7 @@ export function TranslatorRatingChart({ onTranslatorClick }: TranslatorRatingCha
         />
         <Tooltip content={<CustomTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.1)" }} />
         <Legend
-          wrapperStyle={{ fontSize: "11px" }}
+          wrapperStyle={{ fontSize: "11px", color: "hsl(var(--foreground))" }}
           formatter={(value) => {
             if (value === "rating") return "译员评分"
             return value

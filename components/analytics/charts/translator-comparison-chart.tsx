@@ -166,7 +166,7 @@ export function TranslatorComparisonChart({
         />
         <Tooltip content={<CustomTooltip />} />
         <Legend
-          wrapperStyle={{ fontSize: 11 }}
+          wrapperStyle={{ fontSize: 11, color: "hsl(var(--foreground))" }}
         />
         
         {/* 修改率基准线 */}

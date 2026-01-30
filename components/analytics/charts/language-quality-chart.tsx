@@ -175,7 +175,7 @@ export function LanguageQualityChart({
         
         <Tooltip content={<CustomTooltip />} />
         <Legend
-          wrapperStyle={{ fontSize: 11 }}
+          wrapperStyle={{ fontSize: 11, color: "hsl(var(--foreground))" }}
           iconType="circle"
         />
       </RadarChart>
