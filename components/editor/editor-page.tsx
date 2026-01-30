@@ -275,7 +275,7 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
     return {
       onscreen: false,
       glossary: false,
-      episode: false,
+      episode: true, // 默认收起
     }
   })
   
@@ -1035,8 +1035,8 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
             {/* 上半部分：视频播放器 + 字幕编辑器 + 右侧面板 */}
             <ResizablePanel defaultSize={70} minSize={40}>
               <ResizablePanelGroup direction="horizontal">
-                {/* Left - Video Player - 固定宽度 */}
-                <ResizablePanel defaultSize={20} minSize={18} maxSize={22}>
+                {/* Left - Video Player - 可调整宽度,最小确保按钮显示,最大到16:9比例 */}
+                <ResizablePanel defaultSize={20} minSize={15} maxSize={50}>
                   <div className="h-full overflow-hidden border-r border-border">
                     <VideoPlayerPanel
                   posterImage={projectData.image}

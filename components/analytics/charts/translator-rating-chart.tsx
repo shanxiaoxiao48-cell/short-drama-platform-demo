@@ -1,7 +1,16 @@
 "use client"
 
 import { useMemo } from "react"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts"
+
+// 扩展颜色方案，每个译员使用不同颜色
+const COLORS = [
+  '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899',
+  '#06b6d4', '#84cc16', '#f97316', '#14b8a6', '#a855f7', '#f43f5e',
+  '#0ea5e9', '#22c55e', '#eab308', '#dc2626', '#9333ea', '#db2777',
+  '#0284c7', '#16a34a', '#ca8a04', '#b91c1c', '#7c3aed', '#be123c',
+  '#0369a1', '#15803d', '#a16207', '#991b1b', '#6d28d9', '#9f1239'
+]
 
 interface TranslatorRatingChartProps {
   onTranslatorClick?: (translatorName: string) => void
@@ -18,14 +27,6 @@ const mockRatingData = [
   { name: "杨译员", rating: 3.5, tasks: 54, category: "C级" },
   { name: "周译员", rating: 3.2, tasks: 42, category: "C级" },
 ]
-
-// 根据评分获取颜色 - 使用更明显的颜色避免与背景融合
-const getRatingColor = (rating: number) => {
-  if (rating >= 4.5) return "#10b981" // A级 - 明亮绿色
-  if (rating >= 4.0) return "#3b82f6" // B级 - 明亮蓝色
-  if (rating >= 3.5) return "#f59e0b" // C级 - 明亮橙色
-  return "#ef4444" // D级 - 明亮红色
-}
 
 // 自定义Tooltip
 const CustomTooltip = ({ active, payload }: any) => {
@@ -58,7 +59,7 @@ export function TranslatorRatingChart({ onTranslatorClick }: TranslatorRatingCha
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
         data={chartData}
-        margin={{ top: 10, right: 10, left: 0, bottom: 20 }}
+        margin={{ top: 10, right: 10, left: 0, bottom: 60 }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
         <XAxis
@@ -80,13 +81,6 @@ export function TranslatorRatingChart({ onTranslatorClick }: TranslatorRatingCha
           }}
         />
         <Tooltip content={<CustomTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.1)" }} />
-        <Legend
-          wrapperStyle={{ fontSize: "11px", color: textColor }}
-          formatter={(value) => {
-            if (value === "rating") return "译员评分"
-            return value
-          }}
-        />
         <Bar
           dataKey="rating"
           radius={[4, 4, 0, 0]}
@@ -94,7 +88,7 @@ export function TranslatorRatingChart({ onTranslatorClick }: TranslatorRatingCha
           cursor="pointer"
         >
           {chartData.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={getRatingColor(entry.rating)} />
+            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
           ))}
         </Bar>
       </BarChart>

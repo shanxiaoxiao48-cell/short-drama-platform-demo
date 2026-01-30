@@ -17,6 +17,13 @@ import {
   FileCheck,
   Shield,
   BarChart3,
+  PieChart,
+  List,
+  BookOpen,
+  Users,
+  CheckSquare,
+  FileText,
+  Languages,
 } from "lucide-react"
 import { usePermission } from "@/contexts/permission-context"
 import {
@@ -54,6 +61,7 @@ interface NavItem {
   children?: {
     id: PageType
     label: string
+    icon?: any // 添加子菜单图标
   }[]
 }
 
@@ -69,8 +77,8 @@ const navItems: NavItem[] = [
     label: "仪表盘",
     icon: BarChart3,
     children: [
-      { id: "analytics-overview", label: "概览" },
-      { id: "analytics-data-list", label: "数据列表" },
+      { id: "analytics-overview", label: "概览", icon: PieChart },
+      { id: "analytics-data-list", label: "数据列表", icon: List },
     ],
   },
   { 
@@ -84,8 +92,8 @@ const navItems: NavItem[] = [
     label: "物料管理",
     icon: FolderOpen,
     children: [
-      { id: "projects", label: "短剧管理" },
-      { id: "novels", label: "小说管理" },
+      { id: "projects", label: "短剧管理", icon: Film },
+      { id: "novels", label: "小说管理", icon: BookOpen },
     ],
   },
   {
@@ -93,7 +101,7 @@ const navItems: NavItem[] = [
     label: "任务管理",
     icon: ClipboardList,
     children: [
-      { id: "tasks", label: "任务列表" },
+      { id: "tasks", label: "任务列表", icon: CheckSquare },
     ],
   },
   {
@@ -101,7 +109,7 @@ const navItems: NavItem[] = [
     label: "任务分配",
     icon: UserCheck,
     children: [
-      { id: "tasks", label: "翻译任务列表" },
+      { id: "tasks", label: "翻译任务列表", icon: FileText },
     ],
   },
   {
@@ -109,15 +117,15 @@ const navItems: NavItem[] = [
     label: "翻译审核",
     icon: FileCheck,
     children: [
-      { id: "tasks", label: "审核" },
-      { id: "tasks", label: "翻译" },
+      { id: "tasks", label: "审核", icon: CheckSquare },
+      { id: "tasks", label: "翻译", icon: Languages },
     ],
   },
 ]
 
 export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false)
-  const [expandedMenus, setExpandedMenus] = useState<string[]>(["物料管理"]) // 默认展开物料管理
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]) // 默认全部收起
   const [showRoleSwitch, setShowRoleSwitch] = useState(false)
   const { user, switchRole, hasMenu } = usePermission()
 
@@ -191,22 +199,52 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
                   "w-full justify-start gap-3 h-10 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                   collapsed && "justify-center px-0"
                 )}
-                onClick={() => !collapsed && toggleMenu(item.label)}
+                onClick={() => toggleMenu(item.label)}
               >
                 <Icon className="w-5 h-5 shrink-0" />
                 {!collapsed && <span className="flex-1 text-left">{item.label}</span>}
               </Button>
 
-              {/* 二级菜单 - 添加平滑过渡动画 */}
-              {!collapsed && item.children && (
+              {/* 二级菜单 - 收起状态显示图标，展开状态显示文字 */}
+              {item.children && (
                 <div 
                   className={cn(
-                    "ml-8 space-y-1 overflow-hidden transition-all duration-300 ease-in-out",
+                    "space-y-1 overflow-hidden transition-all duration-300 ease-in-out",
+                    collapsed ? "flex flex-col items-center" : "ml-8",
                     isExpanded ? "max-h-96 opacity-100 mt-1" : "max-h-0 opacity-0 mt-0"
                   )}
                 >
-                  {item.children.map((child) => {
+                  {item.children.map((child, index) => {
                     const isActive = currentPage === child.id
+                    const ChildIcon = child.icon
+                    
+                    // 收起状态：显示图标（带背景）
+                    if (collapsed) {
+                      return (
+                        <Button
+                          key={child.label}
+                          variant="ghost"
+                          size="sm"
+                          className={cn(
+                            "w-10 h-10 p-0 flex items-center justify-center",
+                            "hover:bg-transparent"
+                          )}
+                          onClick={() => onNavigate(child.id)}
+                          title={child.label}
+                        >
+                          <div className={cn(
+                            "w-8 h-8 rounded-md flex items-center justify-center transition-colors",
+                            isActive 
+                              ? "bg-sidebar-primary/20 text-sidebar-primary" 
+                              : "bg-muted/50 text-sidebar-foreground/70 hover:bg-muted hover:text-sidebar-foreground"
+                          )}>
+                            {ChildIcon && <ChildIcon className="w-4 h-4" />}
+                          </div>
+                        </Button>
+                      )
+                    }
+                    
+                    // 展开状态：显示文字
                     return (
                       <Button
                         key={child.label}

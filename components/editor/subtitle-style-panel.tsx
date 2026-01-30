@@ -5,6 +5,8 @@ import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FancyTextTemplates } from "./fancy-text-templates"
+import { AlignLeft, AlignCenter, AlignRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 export interface SubtitleStyle {
   fontSize: number
@@ -21,6 +23,10 @@ export interface SubtitleStyle {
   backgroundOpacity?: number
   lineHeight?: number // 行高
   letterSpacing?: number // 字间距
+  textAlign?: "left" | "center" | "right" // 对齐方式
+  writingMode?: "horizontal-tb" | "vertical-rl" // 横竖排版
+  rotation?: number // 旋转角度
+  scale?: number // 缩放比例
 }
 
 interface SubtitleStylePanelProps {
@@ -50,10 +56,20 @@ export function SubtitleStylePanel({
     { value: "'Noto Sans SC', sans-serif", label: "思源黑体" },
   ]
 
+  // 常用颜色列表
+  const commonColors = [
+    { value: "#FFFFFF", label: "白色" },
+    { value: "#000000", label: "黑色" },
+    { value: "#FF0000", label: "红色" },
+    { value: "#00FF00", label: "绿色" },
+    { value: "#0000FF", label: "蓝色" },
+    { value: "#FFFF00", label: "黄色" },
+    { value: "#FF00FF", label: "品红" },
+    { value: "#00FFFF", label: "青色" },
+  ]
+
   return (
     <div className="space-y-3">
-      <h4 className="text-[10px] font-medium text-foreground">字幕样式</h4>
-      
       <Tabs defaultValue="basic" className="w-full">
         <TabsList className="grid w-full grid-cols-2 h-7">
           <TabsTrigger value="basic" className="text-[10px]">基础设置</TabsTrigger>
@@ -83,6 +99,33 @@ export function SubtitleStylePanel({
             </Select>
           </div>
 
+          {/* Writing mode - 横竖排版 */}
+          <div className="space-y-1.5">
+            <Label className="text-[10px]">排版方式</Label>
+            <div className="flex gap-1">
+              <Button
+                variant={subtitleStyle.writingMode === "horizontal-tb" || !subtitleStyle.writingMode ? "default" : "outline"}
+                size="sm"
+                className="h-7 flex-1 text-[10px]"
+                onClick={() =>
+                  onStyleChange({ ...subtitleStyle, writingMode: "horizontal-tb" })
+                }
+              >
+                横排
+              </Button>
+              <Button
+                variant={subtitleStyle.writingMode === "vertical-rl" ? "default" : "outline"}
+                size="sm"
+                className="h-7 flex-1 text-[10px]"
+                onClick={() =>
+                  onStyleChange({ ...subtitleStyle, writingMode: "vertical-rl" })
+                }
+              >
+                竖排
+              </Button>
+            </div>
+          </div>
+
           {/* Font size */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
@@ -97,15 +140,53 @@ export function SubtitleStylePanel({
               onValueChange={([value]) =>
                 onStyleChange({ ...subtitleStyle, fontSize: value })
               }
-              className="w-full"
+              className="w-full [&_[role=slider]]:h-2.5 [&_[role=slider]]:w-2.5"
             />
+          </div>
+
+          {/* Font color */}
+          <div className="space-y-1.5">
+            <Label className="text-[10px]">字体颜色</Label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={subtitleStyle.color || "#FFFFFF"}
+                onChange={(e) =>
+                  onStyleChange({ ...subtitleStyle, color: e.target.value })
+                }
+                className="h-7 w-12 rounded border border-input cursor-pointer"
+              />
+              <Select
+                value={subtitleStyle.color || "#FFFFFF"}
+                onValueChange={(value) =>
+                  onStyleChange({ ...subtitleStyle, color: value })
+                }
+              >
+                <SelectTrigger className="h-7 text-[10px] flex-1">
+                  <SelectValue placeholder="选择颜色" />
+                </SelectTrigger>
+                <SelectContent>
+                  {commonColors.map((color) => (
+                    <SelectItem key={color.value} value={color.value} className="text-[10px]">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded border border-border"
+                          style={{ backgroundColor: color.value }}
+                        />
+                        {color.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Line height */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <Label className="text-[10px]">行高</Label>
-              <span className="text-[10px] text-muted-foreground">{subtitleStyle.lineHeight || 1.5}</span>
+              <Label className="text-[10px]">行距</Label>
+              <span className="text-[10px] text-muted-foreground">{(subtitleStyle.lineHeight || 1.5).toFixed(1)}</span>
             </div>
             <Slider
               value={[subtitleStyle.lineHeight || 1.5]}
@@ -115,7 +196,7 @@ export function SubtitleStylePanel({
               onValueChange={([value]) =>
                 onStyleChange({ ...subtitleStyle, lineHeight: value })
               }
-              className="w-full"
+              className="w-full [&_[role=slider]]:h-2.5 [&_[role=slider]]:w-2.5"
             />
           </div>
 
@@ -133,8 +214,45 @@ export function SubtitleStylePanel({
               onValueChange={([value]) =>
                 onStyleChange({ ...subtitleStyle, letterSpacing: value })
               }
-              className="w-full"
+              className="w-full [&_[role=slider]]:h-2.5 [&_[role=slider]]:w-2.5"
             />
+          </div>
+
+          {/* Text alignment */}
+          <div className="space-y-1.5">
+            <Label className="text-[10px]">对齐方式</Label>
+            <div className="flex gap-1">
+              <Button
+                variant={subtitleStyle.textAlign === "left" ? "default" : "outline"}
+                size="sm"
+                className="h-7 flex-1"
+                onClick={() =>
+                  onStyleChange({ ...subtitleStyle, textAlign: "left" })
+                }
+              >
+                <AlignLeft className="h-3 w-3" />
+              </Button>
+              <Button
+                variant={subtitleStyle.textAlign === "center" || !subtitleStyle.textAlign ? "default" : "outline"}
+                size="sm"
+                className="h-7 flex-1"
+                onClick={() =>
+                  onStyleChange({ ...subtitleStyle, textAlign: "center" })
+                }
+              >
+                <AlignCenter className="h-3 w-3" />
+              </Button>
+              <Button
+                variant={subtitleStyle.textAlign === "right" ? "default" : "outline"}
+                size="sm"
+                className="h-7 flex-1"
+                onClick={() =>
+                  onStyleChange({ ...subtitleStyle, textAlign: "right" })
+                }
+              >
+                <AlignRight className="h-3 w-3" />
+              </Button>
+            </div>
           </div>
 
           {/* Vertical position */}
@@ -151,7 +269,7 @@ export function SubtitleStylePanel({
               onValueChange={([value]) =>
                 onStyleChange({ ...subtitleStyle, verticalPosition: value })
               }
-              className="w-full"
+              className="w-full [&_[role=slider]]:h-2.5 [&_[role=slider]]:w-2.5"
             />
           </div>
         </TabsContent>

@@ -567,14 +567,14 @@ export function SubtitleDualPanel({
       ) : (
         /* 正常模式：单栏显示 */
         <div className="flex flex-col h-full w-full">
-          {/* Header */}
-          <div className="px-3 py-2 border-b border-border shrink-0">
-            <div className="flex items-center justify-between">
-              <div>
+          {/* Header - 固定高度 h-[52px] */}
+          <div className="px-3 py-2 border-b border-border shrink-0 h-[52px]">
+            <div className="flex items-center justify-between h-full">
+              <div className="flex items-center gap-2">
                 <h3 className="text-sm font-semibold text-foreground">字幕编辑</h3>
-                <p className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   {subtitles.length > 0 ? `${subtitles.length} 条字幕` : "暂无字幕数据"}
-                </p>
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 {/* 历史版本按钮 - 只在质检环节显示 */}

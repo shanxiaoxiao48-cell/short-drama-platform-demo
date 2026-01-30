@@ -1,6 +1,6 @@
 "use client"
 
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts"
 
 // 扩展颜色方案，支持20+种语言
 const COLORS = [
@@ -37,76 +37,43 @@ const CustomTooltip = ({ active, payload }: any) => {
 export function LanguageDistributionChart({ data }: LanguageDistributionChartProps) {
   // 使用固定的浅色文字颜色
   const textColor = "#e5e7eb" // 浅灰色，适合深色背景
+  
+  // 按任务数排序，取前10个语种
+  const sortedData = [...data].sort((a, b) => b.count - a.count).slice(0, 10)
 
-  // 自定义标签渲染函数 - 带引导线
-  const renderCustomLabel = ({
-    cx,
-    cy,
-    midAngle,
-    innerRadius,
-    outerRadius,
-    language,
-    percentage,
-  }: any) => {
-    const RADIAN = Math.PI / 180
-    // 引导线起点（饼图外边缘）
-    const radius = outerRadius + 10
-    const x = cx + radius * Math.cos(-midAngle * RADIAN)
-    const y = cy + radius * Math.sin(-midAngle * RADIAN)
-    
-    // 引导线终点（标签位置）
-    const labelRadius = outerRadius + 35
-    const labelX = cx + labelRadius * Math.cos(-midAngle * RADIAN)
-    const labelY = cy + labelRadius * Math.sin(-midAngle * RADIAN)
-    
-    // 文字对齐方式
-    const textAnchor = labelX > cx ? 'start' : 'end'
-    
-    return (
-      <g>
-        {/* 引导线 */}
-        <path
-          d={`M ${x},${y} L ${labelX},${labelY}`}
-          stroke={textColor}
-          strokeWidth={1}
-          fill="none"
-        />
-        {/* 标签文字 */}
-        <text
-          x={labelX}
-          y={labelY}
-          textAnchor={textAnchor}
-          dominantBaseline="central"
-          fill={textColor}
-          fontSize={11}
-          fontWeight={500}
-        >
-          {language} {percentage}%
-        </text>
-      </g>
-    )
-  }
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <PieChart>
-        <Pie
-          data={data}
-          cx="50%"
-          cy="50%"
-          innerRadius={60}
-          outerRadius={100}
-          fill="#8884d8"
-          paddingAngle={2}
+      <BarChart
+        data={sortedData}
+        margin={{ top: 10, right: 10, left: 0, bottom: 60 }}
+      >
+        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+        <XAxis
+          dataKey="language"
+          tick={{ fill: textColor, fontSize: 11 }}
+          angle={-45}
+          textAnchor="end"
+          height={80}
+        />
+        <YAxis
+          tick={{ fill: textColor, fontSize: 11 }}
+          label={{
+            value: "任务数",
+            angle: -90,
+            position: "insideLeft",
+            style: { fill: textColor, fontSize: 11 },
+          }}
+        />
+        <Tooltip content={<CustomTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.1)" }} />
+        <Bar
           dataKey="count"
-          label={renderCustomLabel}
-          labelLine={false}
+          radius={[4, 4, 0, 0]}
         >
-          {data.map((entry, index) => (
+          {sortedData.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
           ))}
-        </Pie>
-        <Tooltip content={<CustomTooltip />} />
-      </PieChart>
+        </Bar>
+      </BarChart>
     </ResponsiveContainer>
   )
 }

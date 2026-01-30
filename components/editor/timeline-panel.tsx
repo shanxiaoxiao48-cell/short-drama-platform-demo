@@ -145,13 +145,9 @@ export function TimelinePanel({
   }
 
   const formatTimeShort = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600)
-    const mins = Math.floor((seconds % 3600) / 60)
+    const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
-    if (hours > 0) {
-      return `${hours}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
-    }
-    return `${mins}:${secs.toString().padStart(2, "0")}`
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
   // Handle subtitle edge resizing
@@ -391,12 +387,6 @@ export function TimelinePanel({
     <div className="flex flex-col h-full bg-muted/20 relative">
       {/* Timeline ruler */}
       <div className="shrink-0 border-b border-border bg-card">
-        {/* Time display */}
-        <div className="px-4 py-1 flex items-center justify-between text-xs text-muted-foreground border-b border-border">
-          <span>{formatTime(currentTime)}</span>
-          <span>总时长: {formatTime(duration)}</span>
-        </div>
-
         {/* Timeline ruler */}
         <div className="flex">
           {/* Track labels spacer */}
@@ -481,7 +471,7 @@ export function TimelinePanel({
         className="absolute w-px bg-white dark:bg-white pointer-events-none z-40"
         style={{
           left: `${currentTime * pixelsPerSecond + 96}px`,
-          top: "41px", // Start from timeline ruler (after time display)
+          top: "0px", // Start from timeline ruler
           bottom: "41px", // End before zoom controls
         }}
       />
@@ -491,7 +481,7 @@ export function TimelinePanel({
         className="absolute w-px z-50"
         style={{
           left: `${currentTime * pixelsPerSecond + 96}px`,
-          top: "41px",
+          top: "0px",
           height: "32px", // Timeline ruler height
         }}
         onMouseDown={handlePlayheadDrag}

@@ -13,14 +13,9 @@ import {
 import {
   Play,
   Pause,
-  SkipBack,
-  SkipForward,
-  ChevronLeft,
-  ChevronRight,
-  Volume2,
-  Maximize,
-  RotateCcw,
+  ZoomIn,
 } from "lucide-react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { VideoWatermark } from "./video-watermark"
 
 interface SubtitleStyle {
@@ -51,6 +46,8 @@ interface VideoPlayerPanelProps {
   originalSubtitle?: string // 原文字幕
   translatedSubtitle?: string // 译文字幕
   onscreenTexts?: Array<{ text: string; type?: string }> // 画面字列表
+  selectedSubtitleId?: string | null // 当前选中的字幕ID
+  onSubtitleStyleChange?: (style: Partial<SubtitleStyle>) => void // 字幕样式变化回调
 }
 
 const DEFAULT_FRAME_RATE = 30 // 30 fps
@@ -76,13 +73,22 @@ export function VideoPlayerPanel({
   originalSubtitle,
   translatedSubtitle,
   onscreenTexts = [],
+  selectedSubtitleId = null,
+  onSubtitleStyleChange,
 }: VideoPlayerPanelProps) {
   const [internalIsPlaying, setInternalIsPlaying] = useState(false)
   const [volume, setVolume] = useState(80)
   const [playbackSpeed, setPlaybackSpeed] = useState(1)
   const [duration, setDuration] = useState(externalDuration)
+  const [videoScale, setVideoScale] = useState(100) // 视频缩放比例 50-150%
+  const [aspectRatio, setAspectRatio] = useState("9:16") // 比例选择，默认9:16
+  const [showSubtitleControls, setShowSubtitleControls] = useState(false) // 是否显示字幕调整框
+  const [isDragging, setIsDragging] = useState(false) // 是否正在拖动
+  const [isResizing, setIsResizing] = useState(false) // 是否正在缩放
+  const [isRotating, setIsRotating] = useState(false) // 是否正在旋转
   const videoRef = useRef<HTMLVideoElement>(null)
   const animationFrameRef = useRef<number>()
+  const subtitleRef = useRef<HTMLDivElement>(null)
 
   const isPlaying = onPlayingChange ? externalIsPlaying : internalIsPlaying
   const setIsPlaying = onPlayingChange || setInternalIsPlaying
@@ -170,6 +176,54 @@ export function VideoPlayerPanel({
     }
   }, [playbackSpeed])
 
+  // 处理字幕调整的鼠标事件
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isResizing && onSubtitleStyleChange) {
+        // 简单的缩放逻辑：根据鼠标移动距离调整scale
+        const deltaY = e.movementY
+        const newScale = Math.max(0.5, Math.min(2, (subtitleStyle.scale || 1) - deltaY * 0.01))
+        onSubtitleStyleChange({ scale: newScale })
+      } else if (isRotating && onSubtitleStyleChange) {
+        // 简单的旋转逻辑：根据鼠标移动调整rotation
+        const deltaX = e.movementX
+        const newRotation = ((subtitleStyle.rotation || 0) + deltaX) % 360
+        onSubtitleStyleChange({ rotation: newRotation })
+      }
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+      setIsRotating(false)
+      setIsDragging(false)
+    }
+
+    if (isResizing || isRotating || isDragging) {
+      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mouseup', handleMouseUp)
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove)
+        window.removeEventListener('mouseup', handleMouseUp)
+      }
+    }
+  }, [isResizing, isRotating, isDragging, subtitleStyle, onSubtitleStyleChange])
+
+  // 点击视频区域外关闭字幕调整框
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (subtitleRef.current && !subtitleRef.current.contains(e.target as Node)) {
+        setShowSubtitleControls(false)
+      }
+    }
+
+    if (showSubtitleControls) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [showSubtitleControls])
+
   const handlePlayPause = () => {
     setIsPlaying(!isPlaying)
   }
@@ -213,256 +267,286 @@ export function VideoPlayerPanel({
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
-    return `${mins}:${secs.toString().padStart(2, "0")}`
+    const frames = Math.floor((seconds % 1) * DEFAULT_FRAME_RATE)
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}:${frames.toString().padStart(2, "0")}`
   }
 
-  const formatFrame = (frame: number) => {
-    return frame.toString().padStart(5, "0")
+  const formatTimeWithFrames = (seconds: number, frame: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    const frames = frame % DEFAULT_FRAME_RATE
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}:${frames.toString().padStart(2, "0")}`
+  }
+
+  // 根据aspectRatio计算实际的宽高比
+  const getAspectRatioStyle = () => {
+    const ratioMap: Record<string, string> = {
+      "16:9": "16/9",
+      "4:3": "4/3",
+      "1:1": "1/1",
+      "9:16": "9/16",
+    }
+    return ratioMap[aspectRatio] || "9/16"
   }
 
   return (
     <div className="flex flex-col h-full bg-card overflow-hidden">
-      {/* Video container - 9:16 aspect ratio */}
+      {/* Header - 标题栏，与其他面板保持一致的高度 */}
+      <div className="px-3 py-2 border-b border-border shrink-0 h-[52px] flex items-center">
+        <h3 className="text-sm font-semibold text-foreground">播放器</h3>
+      </div>
+
+      {/* Video container - 保持视频完整显示,两侧用背景色填充 */}
       <div className="relative flex-1 bg-black flex items-center justify-center min-h-0">
-        <div className="relative w-full aspect-[9/16] max-h-full">
-          {/* Video element */}
-          {videoUrl ? (
-            <video
-              ref={videoRef}
-              src={videoUrl}
-              className="w-full h-full object-cover"
-              onTimeUpdate={handleVideoTimeUpdate}
-              onLoadedMetadata={handleVideoLoadedMetadata}
-              onClick={handlePlayPause}
-            />
-          ) : (
-            // Placeholder image - 使用项目对应的海报
-            <img
-              src={posterImage}
-              alt="Video placeholder"
-              className="w-full h-full object-cover"
-            />
-          )}
+        {/* 视频容器 - 最大宽度为16:9比例 */}
+        <div className="relative w-full h-full flex items-center justify-center" style={{ maxWidth: 'calc(100vh * 16 / 9)' }}>
+          <div 
+            className="relative w-full max-h-full"
+            style={{ aspectRatio: getAspectRatioStyle() }}
+          >
+            {/* Video element - 使用contain保持视频完整显示 */}
+            {videoUrl ? (
+              <video
+                ref={videoRef}
+                src={videoUrl}
+                className="w-full h-full object-contain"
+                onTimeUpdate={handleVideoTimeUpdate}
+                onLoadedMetadata={handleVideoLoadedMetadata}
+                onClick={handlePlayPause}
+              />
+            ) : (
+              // Placeholder image - 使用项目对应的海报
+              <img
+                src={posterImage}
+                alt="Video placeholder"
+                className="w-full h-full object-contain"
+              />
+            )}
 
-          {/* Watermark overlay - 水印层 */}
-          <VideoWatermark userName={userName} />
+            {/* Watermark overlay - 水印层 */}
+            <VideoWatermark userName={userName} />
 
-          {/* Subtitle overlays - 多字幕层叠显示 */}
-          {/* 原文字幕 - 显示在偏上位置 */}
-          {subtitleVisibility.original && originalSubtitle && (
-            <div
-              className="absolute left-4 right-4 text-center"
-              style={{
-                bottom: `${100 - subtitleStyle.verticalPosition + 8}%`, // 比译文高8%
-              }}
-            >
-              <p
-                className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+            {/* Subtitle overlays - 多字幕层叠显示 */}
+            {/* 原文字幕 - 显示在偏上位置 */}
+            {subtitleVisibility.original && originalSubtitle && (
+              <div
+                className="absolute left-4 right-4 text-center"
                 style={{
-                  fontSize: `${subtitleStyle.fontSize}px`,
-                  lineHeight: 1.4,
+                  bottom: `${100 - subtitleStyle.verticalPosition + 8}%`, // 比译文高8%
                 }}
               >
-                {originalSubtitle}
-              </p>
-            </div>
-          )}
-
-          {/* 译文字幕 - 显示在底部位置（默认） */}
-          {subtitleVisibility.translated && (translatedSubtitle || currentSubtitle) && (
-            <div
-              className="absolute left-4 right-4 text-center"
-              style={{
-                bottom: `${100 - subtitleStyle.verticalPosition}%`,
-              }}
-            >
-              <p
-                className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
-                style={{
-                  fontSize: `${subtitleStyle.fontSize}px`,
-                  lineHeight: 1.4,
-                }}
-              >
-                {translatedSubtitle || currentSubtitle}
-              </p>
-            </div>
-          )}
-
-          {/* 画面字 - 显示在顶部位置 */}
-          {subtitleVisibility.onscreen && onscreenTexts.length > 0 && (
-            <div className="absolute inset-0 pointer-events-none">
-              {onscreenTexts.map((item, index) => (
-                <div
-                  key={index}
-                  className="absolute left-1/2 -translate-x-1/2"
+                <p
+                  className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                   style={{
-                    top: item.type === "标题" ? "20%" : "15%", // 根据类型调整位置
+                    fontSize: `${subtitleStyle.fontSize}px`,
+                    lineHeight: 1.4,
                   }}
                 >
-                  <p
-                    className="text-white font-bold drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
+                  {originalSubtitle}
+                </p>
+              </div>
+            )}
+
+            {/* 译文字幕 - 显示在底部位置（默认） */}
+            {subtitleVisibility.translated && (translatedSubtitle || currentSubtitle) && (
+              <div
+                ref={subtitleRef}
+                className={`absolute left-4 right-4 text-center cursor-pointer ${showSubtitleControls ? 'ring-2 ring-blue-500' : ''}`}
+                style={{
+                  bottom: `${100 - subtitleStyle.verticalPosition}%`,
+                  transform: `rotate(${subtitleStyle.rotation || 0}deg) scale(${subtitleStyle.scale || 1})`,
+                  transformOrigin: 'center',
+                }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowSubtitleControls(true)
+                }}
+              >
+                <p
+                  className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+                  style={{
+                    fontSize: `${subtitleStyle.fontSize}px`,
+                    lineHeight: subtitleStyle.lineHeight || 1.4,
+                    letterSpacing: `${subtitleStyle.letterSpacing || 0}px`,
+                    textAlign: subtitleStyle.textAlign || "center",
+                    writingMode: subtitleStyle.writingMode || "horizontal-tb",
+                    color: subtitleStyle.color || "#FFFFFF",
+                    fontFamily: subtitleStyle.fontFamily || "Arial, sans-serif",
+                  }}
+                >
+                  {translatedSubtitle || currentSubtitle}
+                </p>
+                
+                {/* 字幕调整控制框 */}
+                {showSubtitleControls && (
+                  <div 
+                    className="absolute inset-0 border-2 border-blue-500 pointer-events-none"
                     style={{
-                      fontSize: `${subtitleStyle.fontSize + 4}px`, // 画面字稍大
-                      lineHeight: 1.2,
+                      margin: '-4px',
                     }}
                   >
-                    {item.text}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
+                    {/* 四个角的缩放手柄 */}
+                    <div 
+                      className="absolute -top-2 -left-2 w-4 h-4 bg-blue-500 rounded-full cursor-nwse-resize pointer-events-auto"
+                      onMouseDown={(e) => {
+                        e.stopPropagation()
+                        setIsResizing(true)
+                      }}
+                    />
+                    <div 
+                      className="absolute -top-2 -right-2 w-4 h-4 bg-blue-500 rounded-full cursor-nesw-resize pointer-events-auto"
+                      onMouseDown={(e) => {
+                        e.stopPropagation()
+                        setIsResizing(true)
+                      }}
+                    />
+                    <div 
+                      className="absolute -bottom-2 -left-2 w-4 h-4 bg-blue-500 rounded-full cursor-nesw-resize pointer-events-auto"
+                      onMouseDown={(e) => {
+                        e.stopPropagation()
+                        setIsResizing(true)
+                      }}
+                    />
+                    <div 
+                      className="absolute -bottom-2 -right-2 w-4 h-4 bg-blue-500 rounded-full cursor-nwse-resize pointer-events-auto"
+                      onMouseDown={(e) => {
+                        e.stopPropagation()
+                        setIsResizing(true)
+                      }}
+                    />
+                    
+                    {/* 旋转手柄 */}
+                    <div 
+                      className="absolute -top-8 left-1/2 -translate-x-1/2 w-4 h-4 bg-green-500 rounded-full cursor-grab pointer-events-auto"
+                      onMouseDown={(e) => {
+                        e.stopPropagation()
+                        setIsRotating(true)
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
-          {/* Play button overlay */}
-          {!isPlaying && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="w-16 h-16 rounded-full bg-black/50 hover:bg-black/70 text-white"
-                onClick={handlePlayPause}
-              >
-                <Play className="w-8 h-8" />
-              </Button>
-            </div>
-          )}
+            {/* 画面字 - 显示在顶部位置 */}
+            {subtitleVisibility.onscreen && onscreenTexts.length > 0 && (
+              <div className="absolute inset-0 pointer-events-none">
+                {onscreenTexts.map((item, index) => (
+                  <div
+                    key={index}
+                    className="absolute left-1/2 -translate-x-1/2"
+                    style={{
+                      top: item.type === "标题" ? "20%" : "15%", // 根据类型调整位置
+                    }}
+                  >
+                    <p
+                      className="text-white font-bold drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
+                      style={{
+                        fontSize: `${subtitleStyle.fontSize + 4}px`, // 画面字稍大
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {item.text}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Play button overlay */}
+            {!isPlaying && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-16 h-16 rounded-full bg-black/50 hover:bg-black/70 text-white"
+                  onClick={handlePlayPause}
+                >
+                  <Play className="w-8 h-8" />
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="p-2 space-y-2 border-t border-border shrink-0">
+      {/* Controls - 极简布局 */}
+      <div className="p-1.5 space-y-0.5 border-t border-border shrink-0">
         {/* Progress bar - 使用暗色调 */}
-        <div className="space-y-1">
-          <Slider
-            value={[currentTime]}
-            max={duration}
-            step={0.1}
-            onValueChange={([value]) => onTimeChange(value)}
-            className="w-full [&_[data-slot=slider-thumb]]:bg-black [&_[data-slot=slider-thumb]]:dark:bg-gray-800 [&_[data-slot=slider-thumb]]:border-black [&_[data-slot=slider-thumb]]:dark:border-gray-800 [&_[data-slot=slider-thumb]]:size-3"
-          />
-        </div>
+        <Slider
+          value={[currentTime]}
+          max={duration}
+          step={0.1}
+          onValueChange={([value]) => onTimeChange(value)}
+          className="w-full [&_[data-slot=slider-thumb]]:bg-black [&_[data-slot=slider-thumb]]:dark:bg-gray-800 [&_[data-slot=slider-thumb]]:border-black [&_[data-slot=slider-thumb]]:dark:border-gray-800 [&_[data-slot=slider-thumb]]:size-2.5"
+        />
 
-        {/* Time display */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{formatTime(currentTime)}</span>
-          <span className="font-mono text-[10px]">
-            Frame: {formatFrame(currentFrame)} / {formatFrame(totalFrames)}
-          </span>
-          <span>{formatTime(duration)}</span>
-        </div>
-
-        {/* Playback controls */}
+        {/* Playback controls - 极简单行布局 */}
         <div className="flex items-center justify-between">
-          {/* Left controls */}
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={handleSkipBackward}
-              title="后退5秒"
-            >
-              <SkipBack className="w-3 h-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={handleFrameBackward}
-              title="后退一帧 (←)"
-            >
-              <ChevronLeft className="w-3 h-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={handlePlayPause}
-              title="播放/暂停 (Space)"
-            >
-              {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={handleFrameForward}
-              title="前进一帧 (→)"
-            >
-              <ChevronRight className="w-3 h-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={handleSkipForward}
-              title="前进5秒"
-            >
-              <SkipForward className="w-3 h-3" />
-            </Button>
+          {/* 左侧：当前时间 / 总时间 */}
+          <div className="flex items-center gap-1 text-[9px] font-mono">
+            <span className="text-blue-500">{formatTimeWithFrames(currentTime, currentFrame)}</span>
+            <span className="text-muted-foreground">/</span>
+            <span className="text-muted-foreground">{formatTimeWithFrames(duration, totalFrames)}</span>
           </div>
 
-          {/* Right controls */}
-          <div className="flex items-center gap-1.5">
-            {/* Playback speed */}
+          {/* 中间：播放按钮 */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5"
+            onClick={handlePlayPause}
+            title="播放/暂停 (Space)"
+          >
+            {isPlaying ? <Pause className="w-2.5 h-2.5" /> : <Play className="w-2.5 h-2.5" />}
+          </Button>
+
+          {/* 右侧：控制组 */}
+          <div className="flex items-center gap-1">
+            {/* 缩放按钮（放大镜图标） - 点击弹出滑动条 */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-4 w-4"
+                  title="缩放"
+                >
+                  <ZoomIn className="w-2.5 h-2.5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-40 p-2" align="end">
+                <div className="space-y-1">
+                  <div className="text-[9px] text-muted-foreground text-center">
+                    缩放: {videoScale}%
+                  </div>
+                  <Slider
+                    value={[videoScale]}
+                    min={50}
+                    max={150}
+                    step={5}
+                    onValueChange={([value]) => setVideoScale(value)}
+                    className="w-full"
+                  />
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* 比例选择 */}
             <Select
-              value={playbackSpeed.toString()}
-              onValueChange={(value) => setPlaybackSpeed(parseFloat(value))}
+              value={aspectRatio}
+              onValueChange={(value) => setAspectRatio(value)}
             >
-              <SelectTrigger className="w-16 h-7 text-xs bg-transparent border-border">
-                <SelectValue />
+              <SelectTrigger className="w-14 h-4 text-[9px] bg-transparent border-border px-1">
+                <SelectValue placeholder="比例" />
               </SelectTrigger>
               <SelectContent>
-                {PLAYBACK_SPEEDS.map((speed) => (
-                  <SelectItem key={speed} value={speed.toString()}>
-                    {speed}x
-                  </SelectItem>
-                ))}
+                <SelectItem value="16:9">16:9</SelectItem>
+                <SelectItem value="4:3">4:3</SelectItem>
+                <SelectItem value="1:1">1:1</SelectItem>
+                <SelectItem value="9:16">9:16</SelectItem>
               </SelectContent>
             </Select>
-
-            {/* Reset */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => onTimeChange(0)}
-              title="重置到开始"
-            >
-              <RotateCcw className="w-3 h-3" />
-            </Button>
-
-            {/* Volume */}
-            <div className="flex items-center gap-1.5">
-              <Volume2 className="w-3 h-3 text-muted-foreground" />
-              <Slider
-                value={[volume]}
-                max={100}
-                step={1}
-                onValueChange={([value]) => {
-                  setVolume(value)
-                  if (videoRef.current) {
-                    videoRef.current.volume = value / 100
-                  }
-                }}
-                className="w-12"
-              />
-            </div>
-
-            {/* Fullscreen */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => {
-                if (videoRef.current) {
-                  videoRef.current.requestFullscreen()
-                }
-              }}
-              title="全屏"
-            >
-              <Maximize className="w-3 h-3" />
-            </Button>
           </div>
         </div>
       </div>
