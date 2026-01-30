@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Save, CheckCircle, Undo, Redo, Star } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -236,6 +236,18 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
   const [currentTime, setCurrentTime] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [selectedSubtitleId, setSelectedSubtitleId] = useState<string | null>(null)
+  
+  // 自动选中当前播放位置的字幕
+  useEffect(() => {
+    if (isPlaying) {
+      const currentSub = subtitles.find(
+        (s) => currentTime >= s.startTime && currentTime < s.endTime
+      )
+      if (currentSub && currentSub.id !== selectedSubtitleId) {
+        setSelectedSubtitleId(currentSub.id)
+      }
+    }
+  }, [currentTime, isPlaying, subtitles, selectedSubtitleId])
   
   // 字幕可见性状态 - 控制视频预览中的字幕显示
   const [subtitleVisibility, setSubtitleVisibility] = useState({
