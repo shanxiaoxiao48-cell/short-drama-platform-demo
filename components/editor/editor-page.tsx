@@ -247,7 +247,7 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
         setSelectedSubtitleId(currentSub.id)
       }
     }
-  }, [currentTime, isPlaying, subtitles, selectedSubtitleId])
+  }, [currentTime, isPlaying])
   
   // 字幕可见性状态 - 控制视频预览中的字幕显示
   const [subtitleVisibility, setSubtitleVisibility] = useState({
