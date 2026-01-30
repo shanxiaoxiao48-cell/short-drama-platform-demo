@@ -19,12 +19,12 @@ const mockRatingData = [
   { name: "周译员", rating: 3.2, tasks: 42, category: "C级" },
 ]
 
-// 根据评分获取颜色
+// 根据评分获取颜色 - 使用更明显的颜色避免与背景融合
 const getRatingColor = (rating: number) => {
-  if (rating >= 4.5) return "hsl(var(--chart-1))" // A级 - 绿色
-  if (rating >= 4.0) return "hsl(var(--chart-2))" // B级 - 蓝色
-  if (rating >= 3.5) return "hsl(var(--chart-3))" // C级 - 黄色
-  return "hsl(var(--chart-4))" // D级 - 红色
+  if (rating >= 4.5) return "#10b981" // A级 - 明亮绿色
+  if (rating >= 4.0) return "#3b82f6" // B级 - 明亮蓝色
+  if (rating >= 3.5) return "#f59e0b" // C级 - 明亮橙色
+  return "#ef4444" // D级 - 明亮红色
 }
 
 // 自定义Tooltip

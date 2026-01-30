@@ -416,14 +416,28 @@ export const mockAdSpends: AdSpend[] = [
 // 任务数据（暂时为空，后续可扩展）
 export const mockTasks: Task[] = []
 
-// 语种分布数据
+// 语种分布数据 - 扩展到20+种语言
 export const languageDistributionData = [
-  { language: "英语", count: 4, percentage: 36 },
-  { language: "西班牙语", count: 2, percentage: 18 },
-  { language: "日语", count: 2, percentage: 18 },
-  { language: "韩语", count: 1, percentage: 9 },
-  { language: "葡萄牙语", count: 1, percentage: 9 },
-  { language: "法语", count: 1, percentage: 9 },
+  { language: "英语", count: 45, percentage: 18.5 },
+  { language: "西班牙语", count: 38, percentage: 15.6 },
+  { language: "日语", count: 32, percentage: 13.2 },
+  { language: "韩语", count: 28, percentage: 11.5 },
+  { language: "葡萄牙语", count: 24, percentage: 9.9 },
+  { language: "法语", count: 18, percentage: 7.4 },
+  { language: "德语", count: 12, percentage: 4.9 },
+  { language: "意大利语", count: 10, percentage: 4.1 },
+  { language: "俄语", count: 8, percentage: 3.3 },
+  { language: "阿拉伯语", count: 6, percentage: 2.5 },
+  { language: "泰语", count: 5, percentage: 2.1 },
+  { language: "越南语", count: 4, percentage: 1.6 },
+  { language: "印尼语", count: 4, percentage: 1.6 },
+  { language: "土耳其语", count: 3, percentage: 1.2 },
+  { language: "波兰语", count: 2, percentage: 0.8 },
+  { language: "荷兰语", count: 2, percentage: 0.8 },
+  { language: "瑞典语", count: 1, percentage: 0.4 },
+  { language: "挪威语", count: 1, percentage: 0.4 },
+  { language: "丹麦语", count: 1, percentage: 0.4 },
+  { language: "芬兰语", count: 1, percentage: 0.4 },
 ]
 
 // 完整的原始数据
