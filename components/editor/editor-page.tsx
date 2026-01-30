@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Save, CheckCircle, Undo, Redo, Star } from "lucide-react"
+import { ArrowLeft, Save, CheckCircle, Undo, Redo, Star, ChevronRight } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
@@ -14,7 +14,7 @@ import { GlossaryPanel } from "./glossary-panel"
 import { EpisodeSelectorPanel } from "./episode-selector-panel"
 import { TranslatorRatingDialog, TranslatorRating } from "./translator-rating-dialog"
 import { ModificationComment } from "./modification-comment-dialog"
-import { SubtitleStyle } from "./subtitle-style-panel"
+import { SubtitleStyle, SubtitleStylePanel } from "./subtitle-style-panel"
 import { QualityCheckReviewDialog } from "./quality-check-review-dialog"
 import { usePermission } from "@/contexts/permission-context"
 import { findAvailableTimeSlot, adjustPositionToAvoidCollision } from "@/lib/subtitle-collision-utils"
@@ -261,6 +261,7 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
     onscreen: boolean
     glossary: boolean
     episode: boolean
+    style: boolean // 字幕样式面板
   }>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('editor-panel-collapsed')
@@ -276,6 +277,7 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
       onscreen: false,
       glossary: false,
       episode: true, // 默认收起
+      style: true, // 默认收起
     }
   })
   
@@ -288,7 +290,7 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
   }
   
   // 切换面板收起状态
-  const handleTogglePanelCollapse = (panel: "onscreen" | "glossary" | "episode") => {
+  const handleTogglePanelCollapse = (panel: "onscreen" | "glossary" | "episode" | "style") => {
     setPanelCollapsed(prev => {
       const newState = {
         ...prev,
@@ -1136,11 +1138,45 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
                     </ResizablePanel>
                   </>
                 )}
+                
+                {/* 字幕样式 Panel */}
+                {!panelCollapsed.style && (
+                  <>
+                    {(!panelCollapsed.onscreen || !panelCollapsed.glossary) && <ResizableHandle withHandle />}
+                    <ResizablePanel defaultSize={15} minSize={12} maxSize={25}>
+                      <div className="h-full overflow-y-auto bg-card border-l border-border">
+                        <div className="px-3 py-2 border-b border-border shrink-0 h-[52px]">
+                          <div className="flex items-center justify-between h-full">
+                            <h4 className="text-sm font-medium text-foreground">字幕样式</h4>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-7 w-7"
+                              onClick={() => handleTogglePanelCollapse("style")}
+                              title="收起面板"
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="p-3">
+                          <SubtitleStylePanel
+                            subtitleStyle={subtitleStyle}
+                            onStyleChange={(style) =>
+                              setSubtitleStyle({ ...subtitleStyle, ...style })
+                            }
+                            showStylePanel={showStylePanel}
+                          />
+                        </div>
+                      </div>
+                    </ResizablePanel>
+                  </>
+                )}
 
                 {/* 选集 Panel */}
                 {!panelCollapsed.episode && (
                   <>
-                    {(!panelCollapsed.onscreen || !panelCollapsed.glossary) && <ResizableHandle withHandle />}
+                    {(!panelCollapsed.onscreen || !panelCollapsed.glossary || !panelCollapsed.style) && <ResizableHandle withHandle />}
                     <ResizablePanel defaultSize={15} minSize={12} maxSize={25}>
                       <div className="h-full overflow-y-auto">
                         <EpisodeSelectorPanel
@@ -1148,12 +1184,7 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
                           totalEpisodes={totalEpisodes}
                           completedEpisodes={completedEpisodes}
                           rejectedEpisodes={rejectedEpisodes}
-                          subtitleStyle={subtitleStyle}
-                          onStyleChange={(style) =>
-                            setSubtitleStyle({ ...subtitleStyle, ...style })
-                          }
                           onEpisodeChange={handleEpisodeChange}
-                          showStylePanel={showStylePanel}
                           showCompletedMarks={!isPending}
                           showViewAllButton={!isReview}
                           onCollapse={() => handleTogglePanelCollapse("episode")}
@@ -1193,7 +1224,7 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
         </div>
 
         {/* Collapsed Panel Tabs - 固定在页面最右边 */}
-        {(panelCollapsed.onscreen || panelCollapsed.glossary || panelCollapsed.episode) && (
+        {(panelCollapsed.onscreen || panelCollapsed.glossary || panelCollapsed.style || panelCollapsed.episode) && (
           <div className="flex flex-col border-l border-border bg-muted/30 shrink-0">
             {panelCollapsed.onscreen && (
               <button
@@ -1211,6 +1242,15 @@ export function EditorPage({ projectId, languageVariant, episodeId, workflowStag
                 style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
               >
                 <span className="text-xs font-medium">术语表</span>
+              </button>
+            )}
+            {panelCollapsed.style && (
+              <button
+                onClick={() => handleTogglePanelCollapse("style")}
+                className="px-2 py-4 border-b border-border hover:bg-accent transition-colors"
+                style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
+              >
+                <span className="text-xs font-medium">字幕样式</span>
               </button>
             )}
             {panelCollapsed.episode && (
