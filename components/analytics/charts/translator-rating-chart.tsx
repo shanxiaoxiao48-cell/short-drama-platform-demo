@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useEffect, useState } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts"
 
 interface TranslatorRatingChartProps {
@@ -45,6 +45,17 @@ const CustomTooltip = ({ active, payload }: any) => {
 
 export function TranslatorRatingChart({ onTranslatorClick }: TranslatorRatingChartProps) {
   const chartData = useMemo(() => mockRatingData, [])
+  const [textColor, setTextColor] = useState("#666666")
+
+  useEffect(() => {
+    // 获取CSS变量的实际颜色值
+    const root = document.documentElement
+    const foreground = getComputedStyle(root).getPropertyValue('--foreground').trim()
+    if (foreground) {
+      // 将 HSL 值转换为完整的 hsl() 格式
+      setTextColor(`hsl(${foreground})`)
+    }
+  }, [])
 
   const handleBarClick = (data: any) => {
     if (onTranslatorClick && data) {
@@ -61,7 +72,7 @@ export function TranslatorRatingChart({ onTranslatorClick }: TranslatorRatingCha
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
         <XAxis
           dataKey="name"
-          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+          tick={{ fill: textColor, fontSize: 11 }}
           angle={-45}
           textAnchor="end"
           height={60}
@@ -69,17 +80,17 @@ export function TranslatorRatingChart({ onTranslatorClick }: TranslatorRatingCha
         <YAxis
           domain={[0, 5]}
           ticks={[0, 1, 2, 3, 4, 5]}
-          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+          tick={{ fill: textColor, fontSize: 11 }}
           label={{
             value: "评分",
             angle: -90,
             position: "insideLeft",
-            style: { fill: "hsl(var(--muted-foreground))", fontSize: 11 },
+            style: { fill: textColor, fontSize: 11 },
           }}
         />
         <Tooltip content={<CustomTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.1)" }} />
         <Legend
-          wrapperStyle={{ fontSize: "11px", color: "hsl(var(--foreground))" }}
+          wrapperStyle={{ fontSize: "11px", color: textColor }}
           formatter={(value) => {
             if (value === "rating") return "译员评分"
             return value
