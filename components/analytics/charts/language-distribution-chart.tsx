@@ -34,6 +34,55 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null
 }
 
+// 自定义标签渲染函数 - 带引导线
+const renderCustomLabel = ({
+  cx,
+  cy,
+  midAngle,
+  innerRadius,
+  outerRadius,
+  language,
+  percentage,
+}: any) => {
+  const RADIAN = Math.PI / 180
+  // 引导线起点（饼图外边缘）
+  const radius = outerRadius + 10
+  const x = cx + radius * Math.cos(-midAngle * RADIAN)
+  const y = cy + radius * Math.sin(-midAngle * RADIAN)
+  
+  // 引导线终点（标签位置）
+  const labelRadius = outerRadius + 35
+  const labelX = cx + labelRadius * Math.cos(-midAngle * RADIAN)
+  const labelY = cy + labelRadius * Math.sin(-midAngle * RADIAN)
+  
+  // 文字对齐方式
+  const textAnchor = labelX > cx ? 'start' : 'end'
+  
+  return (
+    <g>
+      {/* 引导线 */}
+      <path
+        d={`M ${x},${y} L ${labelX},${labelY}`}
+        stroke="hsl(var(--muted-foreground))"
+        strokeWidth={1}
+        fill="none"
+      />
+      {/* 标签文字 */}
+      <text
+        x={labelX}
+        y={labelY}
+        textAnchor={textAnchor}
+        dominantBaseline="central"
+        fill="hsl(var(--foreground))"
+        fontSize={11}
+        fontWeight={500}
+      >
+        {language} {percentage}%
+      </text>
+    </g>
+  )
+}
+
 export function LanguageDistributionChart({ data }: LanguageDistributionChartProps) {
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -47,6 +96,8 @@ export function LanguageDistributionChart({ data }: LanguageDistributionChartPro
           fill="#8884d8"
           paddingAngle={2}
           dataKey="count"
+          label={renderCustomLabel}
+          labelLine={false}
         >
           {data.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
