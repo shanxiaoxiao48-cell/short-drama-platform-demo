@@ -1,6 +1,5 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 
 // 扩展颜色方案，支持20+种语言
@@ -36,16 +35,8 @@ const CustomTooltip = ({ active, payload }: any) => {
 }
 
 export function LanguageDistributionChart({ data }: LanguageDistributionChartProps) {
-  const [textColor, setTextColor] = useState("#666666")
-
-  useEffect(() => {
-    // 获取CSS变量的实际颜色值
-    const root = document.documentElement
-    const foreground = getComputedStyle(root).getPropertyValue('--foreground').trim()
-    if (foreground) {
-      setTextColor(`hsl(${foreground})`)
-    }
-  }, [])
+  // 使用固定的浅色文字颜色
+  const textColor = "#e5e7eb" // 浅灰色，适合深色背景
 
   // 自定义标签渲染函数 - 带引导线
   const renderCustomLabel = ({

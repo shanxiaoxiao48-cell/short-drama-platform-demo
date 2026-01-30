@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useEffect, useState } from "react"
+import { useMemo } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts"
 
 interface TranslatorRatingChartProps {
@@ -45,17 +45,8 @@ const CustomTooltip = ({ active, payload }: any) => {
 
 export function TranslatorRatingChart({ onTranslatorClick }: TranslatorRatingChartProps) {
   const chartData = useMemo(() => mockRatingData, [])
-  const [textColor, setTextColor] = useState("#666666")
-
-  useEffect(() => {
-    // 获取CSS变量的实际颜色值
-    const root = document.documentElement
-    const foreground = getComputedStyle(root).getPropertyValue('--foreground').trim()
-    if (foreground) {
-      // 将 HSL 值转换为完整的 hsl() 格式
-      setTextColor(`hsl(${foreground})`)
-    }
-  }, [])
+  // 使用固定的浅色文字颜色
+  const textColor = "#e5e7eb" // 浅灰色，适合深色背景
 
   const handleBarClick = (data: any) => {
     if (onTranslatorClick && data) {
