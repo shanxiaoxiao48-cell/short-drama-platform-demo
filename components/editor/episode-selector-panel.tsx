@@ -35,17 +35,6 @@ export function EpisodeSelectorPanel({
   const isEpisodeCompleted = (ep: number) => completedEpisodes.includes(ep)
   const isEpisodeRejected = (ep: number) => rejectedEpisodes.includes(ep)
 
-  const toggleShowAll = () => {
-    setShowAll(!showAll)
-    if (!showAll) {
-      setMatrixOffset(0)
-    }
-  }
-
-  const visibleEpisodes = getVisibleEpisodes()
-  const isEpisodeCompleted = (ep: number) => completedEpisodes.includes(ep)
-  const isEpisodeRejected = (ep: number) => rejectedEpisodes.includes(ep)
-
   return (
     <div className="flex flex-col h-full bg-card border-l border-border">
       {/* Header - 固定高度 h-[52px] */}
