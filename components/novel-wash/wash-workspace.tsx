@@ -145,9 +145,8 @@ export function WashWorkspace({ config, onBack, onCreateTranslationProject, init
   const toggleGenre = (g: string) => setSelectedGenres(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g])
 
   const handleStartNewWash = () => {
-    // Record current wash in history
     setWashHistory(prev => [...prev, { targetCountry: config.targetCountry, genres: selectedGenres, timestamp: new Date().toLocaleString() }])
-    // Reset for new wash
+    // Skip analysis, go directly to genre selection
     setPhase("genre_select")
     setSelectedGenres([])
     setGenProgress(0)
@@ -203,70 +202,108 @@ export function WashWorkspace({ config, onBack, onCreateTranslationProject, init
           </div>
         )}
 
-        {/* Genre Select - AI recommends, user picks */}
+        {/* Genre Select - two column layout */}
         {phase === "genre_select" && (
           <ScrollArea className="h-full">
-            <div className="max-w-3xl mx-auto p-6 space-y-6">
-              {/* Analysis summary */}
-              <Card className="p-4 space-y-3">
-                <h3 className="text-sm font-semibold flex items-center gap-2"><FileText className="w-4 h-4" />原文分析摘要</h3>
-                <div className="grid grid-cols-4 gap-3 text-center">
-                  {[["15.2万", "总字数"], ["120", "章节"], [mockAnalysis.structure.pov, "视角"], [mockAnalysis.structure.dialogRatio, "对话占比"]].map(([v, l]) => (
-                    <div key={l} className="p-2 bg-muted/50 rounded"><p className="text-lg font-bold">{v}</p><p className="text-[10px] text-muted-foreground">{l}</p></div>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">识别到的源文化题材：</span>
-                  {mockAnalysis.sourceGenres.map(g => <Badge key={g} variant="secondary" className="text-xs">{g}</Badge>)}
-                </div>
-              </Card>
+            <div className="p-6">
+              <div className="grid grid-cols-[1fr_360px] gap-6 max-w-[1200px] mx-auto">
+                {/* Left: Analysis results */}
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold">原文分析结果</h2>
 
-              {/* Cultural elements found */}
-              <Card className="p-4 space-y-3">
-                <h3 className="text-sm font-semibold flex items-center gap-2"><Map className="w-4 h-4" />提取到 {mockAnalysis.culturalElements.length} 个文化元素</h3>
-                <div className="flex flex-wrap gap-2">
-                  {mockAnalysis.culturalElements.map(el => (
-                    <div key={el.name} className="flex items-center gap-1.5 px-2 py-1 rounded bg-muted/50 text-xs">
-                      <span className="font-medium">{el.name}</span>
-                      <Badge variant={el.dependency === "高" ? "destructive" : "secondary"} className="text-[9px] h-4">{el.dependency}</Badge>
-                      <span className="text-muted-foreground">×{el.frequency}</span>
+                  {/* Stats row */}
+                  <div className="grid grid-cols-4 gap-3">
+                    {[["15.2万", "总字数"], ["120", "章节"], [mockAnalysis.structure.pov, "视角"], [mockAnalysis.structure.dialogRatio, "对话占比"]].map(([v, l]) => (
+                      <Card key={l} className="p-3 text-center">
+                        <p className="text-xl font-bold">{v}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{l}</p>
+                      </Card>
+                    ))}
+                  </div>
+
+                  {/* Source genres */}
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileText className="w-4 h-4 text-muted-foreground" />
+                      <h3 className="text-sm font-semibold">识别到的源文化题材</h3>
                     </div>
-                  ))}
-                </div>
-              </Card>
-
-              {/* Characters */}
-              <Card className="p-4 space-y-3">
-                <h3 className="text-sm font-semibold flex items-center gap-2"><Users className="w-4 h-4" />{mockAnalysis.characters.length} 个主要人物</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {mockAnalysis.characters.map(ch => (
-                    <div key={ch.name} className="p-2 rounded border border-border text-xs">
-                      <div className="flex items-center justify-between"><span className="font-medium">{ch.name}</span><Badge variant="outline" className="text-[9px]">{ch.role}</Badge></div>
-                      <p className="text-muted-foreground mt-0.5">{ch.traits}</p>
+                    <div className="flex gap-2">
+                      {mockAnalysis.sourceGenres.map(g => <Badge key={g} variant="secondary">{g}</Badge>)}
                     </div>
-                  ))}
-                </div>
-              </Card>
+                  </Card>
 
-              {/* AI recommended target genres */}
-              <Card className="p-4 space-y-3 border-primary/30 bg-primary/5">
-                <h3 className="text-sm font-semibold flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" />AI 推荐的{config.targetCountry}文化方向</h3>
-                <p className="text-xs text-muted-foreground">根据原文题材特征，以下是适合转换的{config.targetCountry}文化方向，请选择：</p>
-                <div className="flex flex-wrap gap-2">
-                  {targetGenres.map(g => (
-                    <Badge key={g} variant={selectedGenres.includes(g) ? "default" : "outline"}
-                      className="cursor-pointer text-sm px-3 py-1" onClick={() => toggleGenre(g)}>{g}</Badge>
-                  ))}
-                </div>
-                {selectedGenres.length > 0 && (
-                  <p className="text-xs text-primary">已选择：{selectedGenres.join(" + ")}</p>
-                )}
-              </Card>
+                  {/* Cultural elements - compact table */}
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Map className="w-4 h-4 text-muted-foreground" />
+                      <h3 className="text-sm font-semibold">文化元素（{mockAnalysis.culturalElements.length}）</h3>
+                    </div>
+                    <div className="grid grid-cols-[1fr_80px_60px_60px] gap-x-3 gap-y-1 text-xs">
+                      <span className="text-[10px] text-muted-foreground">元素</span>
+                      <span className="text-[10px] text-muted-foreground">类别</span>
+                      <span className="text-[10px] text-muted-foreground text-center">频次</span>
+                      <span className="text-[10px] text-muted-foreground text-center">依赖度</span>
+                      {mockAnalysis.culturalElements.map(el => (
+                        <div key={el.name} className="contents">
+                          <span className="font-medium py-1">{el.name}</span>
+                          <span className="text-muted-foreground py-1">{el.category}</span>
+                          <span className="text-center text-muted-foreground py-1">{el.frequency}</span>
+                          <span className={cn("text-center py-1", el.dependency === "高" ? "text-red-500" : el.dependency === "中" ? "text-yellow-600" : "text-muted-foreground")}>{el.dependency}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
 
-              <div className="flex justify-end">
-                <Button onClick={() => setPhase("mapping_edit")} disabled={selectedGenres.length === 0}>
-                  生成映射方案 <ArrowRight className="w-4 h-4 ml-1" />
-                </Button>
+                  {/* Characters - horizontal cards */}
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Users className="w-4 h-4 text-muted-foreground" />
+                      <h3 className="text-sm font-semibold">主要人物（{mockAnalysis.characters.length}）</h3>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {mockAnalysis.characters.map(ch => (
+                        <div key={ch.name} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                            {ch.name[0]}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-medium">{ch.name}</span>
+                              <Badge variant="outline" className="text-[9px] h-4">{ch.role}</Badge>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground truncate">{ch.traits}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                </div>
+
+                {/* Right: Genre selection - sticky */}
+                <div className="space-y-4">
+                  <Card className="p-5 border-primary/30 bg-primary/5 sticky top-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Sparkles className="w-5 h-5 text-primary" />
+                      <h3 className="text-base font-semibold">选择{config.targetCountry}文化方向</h3>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-4">AI 根据原文特征推荐以下方向，点击选择：</p>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {targetGenres.map(g => (
+                        <Badge key={g} variant={selectedGenres.includes(g) ? "default" : "outline"}
+                          className="cursor-pointer text-sm px-3 py-1.5 transition-all hover:scale-105" onClick={() => toggleGenre(g)}>{g}</Badge>
+                      ))}
+                    </div>
+                    {selectedGenres.length > 0 && (
+                      <div className="p-3 rounded-lg bg-background border border-border mb-4">
+                        <p className="text-xs text-muted-foreground mb-1">已选方向</p>
+                        <p className="text-sm font-semibold text-primary">{selectedGenres.join(" + ")}</p>
+                      </div>
+                    )}
+                    <Button className="w-full" onClick={() => setPhase("mapping_edit")} disabled={selectedGenres.length === 0}>
+                      生成映射方案 <ArrowRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  </Card>
+                </div>
               </div>
             </div>
           </ScrollArea>

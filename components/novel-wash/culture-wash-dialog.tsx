@@ -109,7 +109,7 @@ export function CultureWashDialog({ open, onOpenChange, onSubmit }: CultureWashD
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
-          <Button onClick={() => { onSubmit(config); onOpenChange(false) }} disabled={!config.projectName.trim() || uploadedFiles.length === 0}>开始分析</Button>
+          <Button onClick={() => { onSubmit(config); onOpenChange(false) }} disabled={!config.projectName.trim() || uploadedFiles.length === 0}>创建项目</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

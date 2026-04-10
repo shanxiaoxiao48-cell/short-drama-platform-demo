@@ -28,18 +28,48 @@ interface WashProjectDetailProps {
 
 export function WashProjectDetail({ projectName, config, onBack, onCreateTranslationProject }: WashProjectDetailProps) {
   const [activeVersion, setActiveVersion] = useState<string | null>(null)
+  const [editingSource, setEditingSource] = useState(false)
+  const [sourceText, setSourceText] = useState("The grand hall of the Dark Moon Pack was filled with wolves from every rank. Alpha Ethan Black stood at the center, his cold eyes scanning the crowd...\n\n(原文内容，点击可编辑)")
 
-  const [versions] = useState<WashVersion[]>([
-    { id: "v1", targetCountry: "中国", genres: ["修仙", "宗门"], status: "completed", createdAt: "2026-04-08 14:30", wordCount: 148000 },
-    { id: "v2", targetCountry: "韩国", genres: ["财阀", "复仇"], status: "completed", createdAt: "2026-04-09 10:15", wordCount: 151000 },
-  ])
+  const [versions] = useState<WashVersion[]>([])
 
+  const hasAnalyzed = versions.length > 0
+
+  // "new_analyze" = first time, full flow from analyzing
+  // "new" = subsequent, skip to genre_select
+  if (activeVersion === "new_analyze") {
+    return <WashWorkspace config={config} onBack={() => setActiveVersion(null)} onCreateTranslationProject={onCreateTranslationProject} initialPhase="analyzing" />
+  }
   if (activeVersion === "new") {
-    return <WashWorkspace config={config} onBack={() => setActiveVersion(null)} onCreateTranslationProject={onCreateTranslationProject} />
+    return <WashWorkspace config={config} onBack={() => setActiveVersion(null)} onCreateTranslationProject={onCreateTranslationProject} initialPhase="genre_select" />
   }
   if (activeVersion) {
     const ver = versions.find(v => v.id === activeVersion)
     return <WashWorkspace config={{ ...config, targetCountry: ver?.targetCountry || config.targetCountry }} onBack={() => setActiveVersion(null)} onCreateTranslationProject={onCreateTranslationProject} initialPhase="text_edit" />
+  }
+
+  if (editingSource) {
+    return (
+      <div className="flex flex-col h-full bg-background">
+        <div className="shrink-0 border-b border-border bg-card px-4 py-2.5 flex items-center gap-3">
+          <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => setEditingSource(false)}><ArrowLeft className="w-4 h-4" /></Button>
+          <div className="min-w-0">
+            <h1 className="text-sm font-semibold truncate">{config.sourceFile || "原文"}</h1>
+            <p className="text-[10px] text-muted-foreground">原文编辑 · {config.sourceCountry}</p>
+          </div>
+          <div className="flex-1" />
+          <span className="text-xs text-muted-foreground">{sourceText.length.toLocaleString()} 字符</span>
+          <Button size="sm" onClick={() => setEditingSource(false)}>保存并返回</Button>
+        </div>
+        <textarea
+          value={sourceText}
+          onChange={e => setSourceText(e.target.value)}
+          className="flex-1 w-full resize-none border-0 outline-none p-8 bg-background leading-relaxed whitespace-pre-wrap"
+          style={{ fontSize: "16px", lineHeight: "1.8" }}
+          spellCheck={false}
+        />
+      </div>
+    )
   }
 
   return (
@@ -66,16 +96,23 @@ export function WashProjectDetail({ projectName, config, onBack, onCreateTransla
               </p>
             </div>
           </div>
-          <Button onClick={() => setActiveVersion("new")}>
-            <Plus className="w-4 h-4 mr-2" />
-            新建洗稿
-          </Button>
+          {hasAnalyzed ? (
+            <Button onClick={() => setActiveVersion("new")}>
+              <Plus className="w-4 h-4 mr-2" />
+              洗另一个版本
+            </Button>
+          ) : (
+            <Button onClick={() => setActiveVersion("new_analyze")}>
+              <Sparkles className="w-4 h-4 mr-2" />
+              开始分析
+            </Button>
+          )}
         </div>
 
         {/* Source file card */}
         <div className="mb-6">
           <h2 className="text-sm font-semibold text-muted-foreground mb-3">原文</h2>
-          <Card className="p-4 bg-card border-border">
+          <Card className="p-4 bg-card border-border cursor-pointer hover:border-primary/50 hover:shadow-md transition-all" onClick={() => setEditingSource(true)}>
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
                 <BookOpen className="w-6 h-6 text-blue-500" />
@@ -84,11 +121,13 @@ export function WashProjectDetail({ projectName, config, onBack, onCreateTransla
                 <p className="text-sm font-semibold text-foreground">{config.sourceFile || "The Alpha's Rejected Mate.txt"}</p>
                 <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1"><Globe className="w-3 h-3" />{config.sourceCountry}</span>
-                  <span>152,000 字</span>
-                  <span>120 章</span>
+                  <span>{sourceText.length.toLocaleString()} 字</span>
                 </div>
               </div>
-              <Badge variant="outline" className="text-xs shrink-0">原文</Badge>
+              <div className="flex items-center gap-2 shrink-0">
+                <Badge variant="outline" className="text-xs">原文</Badge>
+                <ArrowRight className="w-4 h-4 text-muted-foreground" />
+              </div>
             </div>
           </Card>
         </div>
@@ -134,15 +173,15 @@ export function WashProjectDetail({ projectName, config, onBack, onCreateTransla
               </Card>
             ))}
 
-            {/* New wash card */}
+            {/* Add new card */}
             <Card
               className="p-4 border-dashed border-2 border-border cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all flex flex-col items-center justify-center min-h-[200px] gap-3"
-              onClick={() => setActiveVersion("new")}
+              onClick={() => setActiveVersion(hasAnalyzed ? "new" : "new_analyze")}
             >
               <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                <Plus className="w-5 h-5 text-muted-foreground" />
+                {hasAnalyzed ? <Plus className="w-5 h-5 text-muted-foreground" /> : <Sparkles className="w-5 h-5 text-muted-foreground" />}
               </div>
-              <p className="text-sm text-muted-foreground">洗另一个文化版本</p>
+              <p className="text-sm text-muted-foreground">{hasAnalyzed ? "洗另一个文化版本" : "开始分析并洗稿"}</p>
             </Card>
           </div>
         </div>

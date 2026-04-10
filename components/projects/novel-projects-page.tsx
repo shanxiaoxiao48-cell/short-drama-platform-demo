@@ -633,8 +633,8 @@ export function NovelProjectsPage({ onOpenNovelWorkspace, autoOpenCreate, onCrea
             washConfig: cfg,
           }
           saveProjects([washProject, ...projects])
-          // Go directly to the wash flow (analyzing → genre_select → ...)
-          setShowWashFlow(true)
+          // Go to the wash project detail page (not the flow)
+          setShowWashWorkspace(true)
         }}
       />
     </div>
