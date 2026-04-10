@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>检查 localStorage 数据</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+        .info {
+            color: blue;
+        }
+        .warning {
+            color: orange;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>检查 localStorage 数据</h1>
+        
+        <button onclick="checkLocalStorage()">检查所有数据</button>
+        <button onclick="importProjectData()">重新导入项目数据</button>
+        <button onclick="clearLocalStorage()">清空所有数据</button>
+        
+        <h2>操作结果</h2>
+        <div id="result"></div>
+        
+        <h2>localStorage 数据</h2>
+        <div id="localstorage-data"></div>
+        
+        <h2>项目变体数据</h2>
+        <div id="variants-data"></div>
+    </div>
+    
+    <script>
+        // 完整的项目数据
+        const projectData = [
+            {
+                "id": "DJ26021201",
+                "title": "123",
+                "episodes": 2,
+                "languageCount": 0,
+                "remark": "-",
+                "createdAt": "2026-02-12",
+                "originalLanguage": "中文",
+                "videoType": "subtitle"
+            },
+            {
+                "id": "DJ24010101",
+                "title": "霸道总裁爱上我",
+                "episodes": 80,
+                "languageCount": 4,
+                "remark": "优先处理，客户催促",
+                "createdAt": "2024-01-01",
+                "originalLanguage": "中文",
+                "videoType": "subtitle"
+            },
+            {
+                "id": "DJ23120101",
+                "title": "穿越之锦绣良缘",
+                "episodes": 60,
+                "languageCount": 1,
+                "remark": "已完成翻译",
+                "createdAt": "2023-12-01",
+                "originalLanguage": "中文",
+                "videoType": "subtitle"
+            },
+            {
+                "id": "DJ24011001",
+                "title": "重生之商业帝国",
+                "episodes": 100,
+                "languageCount": 1,
+                "remark": "",
+                "createdAt": "2024-01-10",
+                "originalLanguage": "中文",
+                "videoType": "subtitle"
+            },
+            {
+                "id": "DJ24011401",
+                "title": "豪门逆袭记",
+                "episodes": 50,
+                "languageCount": 0,
+                "remark": "新项目，待启动",
+                "createdAt": "2024-01-14",
+                "originalLanguage": "中文",
+                "videoType": "subtitle"
+            },
+            {
+                "id": "DJ24010501",
+                "title": "甜蜜复仇",
+                "episodes": 70,
+                "languageCount": 1,
+                "remark": "翻译进度正常",
+                "createdAt": "2024-01-05",
+                "originalLanguage": "中文",
+                "videoType": "subtitle"
+            },
+            {
+                "id": "DJ23110101",
+                "title": "都市修仙传",
+                "episodes": 120,
+                "languageCount": 1,
+                "remark": "全部完成",
+                "createdAt": "2023-11-01",
+                "originalLanguage": "中文",
+                "videoType": "subtitle"
+            }
+        ];
+        
+        function log(message, type = 'info') {
+            const resultDiv = document.getElementById('result');
+            const p = document.createElement('p');
+            p.className = type;
+            p.textContent = message;
+            resultDiv.appendChild(p);
+        }
+        
+        function checkLocalStorage() {
+            const resultDiv = document.getElementById('result');
+            const dataDiv = document.getElementById('localstorage-data');
+            const variantsDiv = document.getElementById('variants-data');
+            resultDiv.innerHTML = '';
+            dataDiv.innerHTML = '';
+            variantsDiv.innerHTML = '';
+            
+            try {
+                log('检查 localStorage 数据...');
+                
+                // 检查 drama-projects
+                const dramaProjects = localStorage.getItem('drama-projects');
+                if (dramaProjects) {
+                    const projects = JSON.parse(dramaProjects);
+                    log(`找到 ${projects.length} 个项目`, 'success');
+                    dataDiv.innerHTML = '<h3>drama-projects:</h3><pre>' + JSON.stringify(projects, null, 2) + '</pre>';
+                    
+                    // 检查每个项目的变体数据
+                    projects.forEach(project => {
+                        const variantsKey = `project-${project.id}-variants`;
+                        const variantsData = localStorage.getItem(variantsKey);
+                        if (variantsData) {
+                            try {
+                                const variants = JSON.parse(variantsData);
+                                variantsDiv.innerHTML += `<h3>project-${project.id}-variants:</h3><pre>${JSON.stringify(variants, null, 2)}</pre>`;
+                            } catch (e) {
+                                variantsDiv.innerHTML += `<h3 class="error">project-${project.id}-variants: 解析错误</h3>`;
+                            }
+                        } else {
+                            variantsDiv.innerHTML += `<h3 class="warning">project-${project.id}-variants: 不存在</h3>`;
+                        }
+                    });
+                } else {
+                    log('localStorage 中没有 drama-projects 数据', 'error');
+                }
+                
+                // 检查所有 localStorage 键
+                log('\n所有 localStorage 键:', 'info');
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    log(`- ${key}`, 'info');
+                }
+                
+            } catch (error) {
+                log(`检查过程中出错: ${error.message}`, 'error');
+            }
+        }
+        
+        function importProjectData() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '';
+            
+            try {
+                log('开始导入项目数据...');
+                
+                // 存储项目数据到 localStorage
+                localStorage.setItem('drama-projects', JSON.stringify(projectData));
+                log('项目数据导入成功！', 'success');
+                log(`导入了 ${projectData.length} 个项目`, 'success');
+                
+                // 为每个项目生成完整的语言变体数据
+                projectData.forEach(project => {
+                    let variants = [];
+                    let image = "/drama-posters/default.png";
+                    
+                    // 根据项目ID设置对应的图片
+                    if (project.id === "DJ24010101") {
+                        image = "/drama-posters/badao-zongcai.png";
+                        // 霸道总裁爱上我的完整变体数据
+                        variants = [
+                            {
+                                "id": "0",
+                                "targetLanguage": "中文（源语言）",
+                                "progress": 100,
+                                "totalEpisodes": 80,
+                                "completedEpisodes": 80,
+                                "currentStage": "任务分配",
+                                "image": image
+                            },
+                            {
+                                "id": "1",
+                                "targetLanguage": "英语",
+                                "progress": 75,
+                                "totalEpisodes": 80,
+                                "completedEpisodes": 60,
+                                "currentStage": "人工翻译",
+                                "image": image
+                            },
+                            {
+                                "id": "2",
+                                "targetLanguage": "西班牙语",
+                                "progress": 45,
+                                "totalEpisodes": 80,
+                                "completedEpisodes": 36,
+                                "currentStage": "质检审核",
+                                "image": image,
+                                "currentRound": 2
+                            },
+                            {
+                                "id": "3",
+                                "targetLanguage": "葡萄牙语",
+                                "progress": 30,
+                                "totalEpisodes": 80,
+                                "completedEpisodes": 24,
+                                "currentStage": "人工翻译",
+                                "image": image,
+                                "currentRound": 3
+                            },
+                            {
+                                "id": "4",
+                                "targetLanguage": "泰语",
+                                "progress": 90,
+                                "totalEpisodes": 80,
+                                "completedEpisodes": 72,
+                                "currentStage": "视频压制",
+                                "image": image
+                            }
+                        ];
+                    } else if (project.id === "DJ23120101") {
+                        image = "/drama-posters/chuanyue-jinxiu.png";
+                        // 穿越之锦绣良缘的完整变体数据
+                        variants = [
+                            {
+                                "id": "0",
+                                "targetLanguage": "中文（源语言）",
+                                "progress": 100,
+                                "totalEpisodes": 60,
+                                "completedEpisodes": 60,
+                                "currentStage": "任务分配",
+                                "image": image
+                            },
+                            {
+                                "id": "1",
+                                "targetLanguage": "西班牙语",
+                                "progress": 100,
+                                "totalEpisodes": 60,
+                                "completedEpisodes": 60,
+                                "currentStage": "视频压制",
+                                "image": image
+                            }
+                        ];
+                    } else if (project.id === "DJ24011001") {
+                        image = "/drama-posters/chongsheng-shangye.png";
+                        // 重生之商业帝国的完整变体数据
+                        variants = [
+                            {
+                                "id": "0",
+                                "targetLanguage": "中文（源语言）",
+                                "progress": 100,
+                                "totalEpisodes": 100,
+                                "completedEpisodes": 100,
+                                "currentStage": "任务分配",
+                                "image": image
+                            },
+                            {
+                                "id": "1",
+                                "targetLanguage": "葡萄牙语",
+                                "progress": 12,
+                                "totalEpisodes": 100,
+                                "completedEpisodes": 12,
+                                "currentStage": "人工翻译",
+                                "image": image
+                            }
+                        ];
+                    } else if (project.id === "DJ24011401") {
+                        image = "/drama-posters/haomen-nixi.png";
+                        // 豪门逆袭记的完整变体数据
+                        variants = [
+                            {
+                                "id": "0",
+                                "targetLanguage": "中文（源语言）",
+                                "progress": 0,
+                                "totalEpisodes": 50,
+                                "completedEpisodes": 0,
+                                "currentStage": "待开始",
+                                "image": image
+                            }
+                        ];
+                    } else if (project.id === "DJ24010501") {
+                        image = "/drama-posters/zhe-aini-aihunxiang.png";
+                        // 甜蜜复仇的完整变体数据
+                        variants = [
+                            {
+                                "id": "0",
+                                "targetLanguage": "中文（源语言）",
+                                "progress": 100,
+                                "totalEpisodes": 70,
+                                "completedEpisodes": 70,
+                                "currentStage": "任务分配",
+                                "image": image
+                            },
+                            {
+                                "id": "1",
+                                "targetLanguage": "印尼语",
+                                "progress": 50,
+                                "totalEpisodes": 70,
+                                "completedEpisodes": 35,
+                                "currentStage": "人工翻译",
+                                "image": image
+                            }
+                        ];
+                    } else if (project.id === "DJ23110101") {
+                        image = "/drama-posters/longwang-zhuxu.png";
+                        // 都市修仙传的完整变体数据
+                        variants = [
+                            {
+                                "id": "0",
+                                "targetLanguage": "中文（源语言）",
+                                "progress": 100,
+                                "totalEpisodes": 120,
+                                "completedEpisodes": 120,
+                                "currentStage": "任务分配",
+                                "image": image
+                            },
+                            {
+                                "id": "1",
+                                "targetLanguage": "英语",
+                                "progress": 100,
+                                "totalEpisodes": 120,
+                                "completedEpisodes": 120,
+                                "currentStage": "视频压制",
+                                "image": image
+                            }
+                        ];
+                    } else if (project.id === "DJ26021201") {
+                        image = "/drama-posters/default.png";
+                        // 新创建项目的变体数据
+                        variants = [
+                            {
+                                "id": "0",
+                                "targetLanguage": "中文（源语言）",
+                                "progress": 0,
+                                "totalEpisodes": 2,
+                                "completedEpisodes": 0,
+                                "currentStage": "待开始",
+                                "image": image
+                            }
+                        ];
+                    }
+                    
+                    localStorage.setItem(`project-${project.id}-variants`, JSON.stringify(variants));
+                    log(`为项目 ${project.id} - ${project.title} 生成了完整的变体数据，包含 ${variants.length} 个语言卡片`, 'success');
+                });
+                
+                log('所有数据导入完成！', 'success');
+                
+                // 检查导入结果
+                setTimeout(checkLocalStorage, 500);
+                
+            } catch (error) {
+                log(`导入过程中出错: ${error.message}`, 'error');
+            }
+        }
+        
+        function clearLocalStorage() {
+            if (confirm('确定要清空所有 localStorage 数据吗？')) {
+                localStorage.clear();
+                log('已清空所有 localStorage 数据', 'success');
+                checkLocalStorage();
+            }
+        }
+        
+        // 页面加载时自动检查
+        window.onload = function() {
+            checkLocalStorage();
+        };
+    </script>
+</body>
+</html>

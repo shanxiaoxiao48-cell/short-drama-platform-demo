@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>检查localStorage</title>
+</head>
+<body>
+    <h1>localStorage 内容</h1>
+    <div id="content"></div>
+    
+    <script>
+        const content = document.getElementById('content');
+        let html = '';
+        
+        // 检查 drama-projects
+        const dramaProjects = localStorage.getItem('drama-projects');
+        html += '<h2>drama-projects:</h2>';
+        html += '<pre>' + (dramaProjects ? JSON.stringify(JSON.parse(dramaProjects), null, 2) : 'null') + '</pre>';
+        
+        // 检查 project-123-variants
+        const project123Variants = localStorage.getItem('project-123-variants');
+        html += '<h2>project-123-variants:</h2>';
+        html += '<pre>' + (project123Variants ? JSON.stringify(JSON.parse(project123Variants), null, 2) : 'null') + '</pre>';
+        
+        // 检查所有 project-*-variants
+        html += '<h2>所有 project-*-variants:</h2>';
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('project-') && key.endsWith('-variants')) {
+                const value = localStorage.getItem(key);
+                html += `<h3>${key}:</h3>`;
+                html += '<pre>' + (value ? JSON.stringify(JSON.parse(value), null, 2) : 'null') + '</pre>';
+            }
+        }
+        
+        content.innerHTML = html;
+    </script>
+</body>
+</html>

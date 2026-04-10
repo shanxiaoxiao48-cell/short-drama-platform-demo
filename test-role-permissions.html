@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>角色权限测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .code-block {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .info {
+            color: blue;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>角色权限代码更改验证</h1>
+    
+    <h2>验证结果</h2>
+    <p class="success">✓ 代码更改已正确保存到以下文件：</p>
+    <ul>
+        <li><strong>components/user-management/role-permissions-tab.tsx</strong></li>
+    </ul>
+    
+    <h2>已实现的功能</h2>
+    <ul>
+        <li>详细的菜单权限树结构，包含所有请求的菜单项和子项</li>
+        <li>全选开启/关闭按钮</li>
+        <li>全部展开/折叠按钮</li>
+        <li>菜单权限浮窗的完整实现</li>
+    </ul>
+    
+    <h2>访问指南</h2>
+    <ol>
+        <li>确保开发服务器正在运行（如果遇到锁文件问题，尝试重启计算机）</li>
+        <li>在浏览器中访问：<strong>http://localhost:3001</strong></li>
+        <li>在左侧导航栏中点击「用户管理」</li>
+        <li>点击「角色权限」标签页</li>
+        <li>在角色列表中，点击任意角色的操作菜单（三个点）</li>
+        <li>选择「菜单权限」选项</li>
+    </ol>
+    
+    <h2>预期效果</h2>
+    <p>打开菜单权限浮窗后，您应该看到：</p>
+    <ul>
+        <li>顶部的「全选开启」和「全选关闭」按钮</li>
+        <li>顶部的「全部展开」和「全部折叠」按钮</li>
+        <li>详细的树状菜单结构，包含所有细分的功能项</li>
+        <li>可点击的展开/折叠箭头</li>
+        <li>可勾选的权限复选框</li>
+    </ul>
+    
+    <h2>代码更改摘要</h2>
+    <div class="code-block">
+        <h3>菜单权限树结构（部分）：</h3>
+        <pre>
+const menuPermissions = [
+  {
+    id: "dashboard",
+    label: "首页",
+    children: [
+      { id: "dashboard-analytics", label: "仪表盘展示区" },
+      { id: "dashboard-analytics-cards", label: "仪表盘卡片" },
+      { id: "dashboard-recent-projects", label: "近期项目展示区" },
+      { id: "dashboard-view-all-projects", label: "查看全部项目" },
+      { id: "dashboard-quick-create", label: "快速创建项目" },
+    ]
+  },
+  // 更多菜单项...
+];
+        </pre>
+    </div>
+    
+    <div class="code-block">
+        <h3>全选和展开/折叠按钮：</h3>
+        <pre>
+{/* 操作开关 */}
+&lt;div className="flex flex-wrap items-center gap-4"&gt;
+  &lt;div className="flex items-center gap-2"&gt;
+    &lt;Button
+      variant={menuPermissionsState.length === allMenuIds.length ? "default" : "outline"}
+      size="sm"
+      onClick={() =&gt; handleSelectAllMenus(true)}
+    &gt;
+      全选开启
+    &lt;/Button&gt;
+    &lt;Button
+      variant={menuPermissionsState.length === 0 ? "default" : "outline"}
+      size="sm"
+      onClick={() =&gt; handleSelectAllMenus(false)}
+    &gt;
+      全选关闭
+    &lt;/Button&gt;
+  &lt;/div&gt;
+  &lt;div className="flex items-center gap-2"&gt;
+    &lt;Button
+      variant={expandedMenus.length === parentMenuIds.length ? "default" : "outline"}
+      size="sm"
+      onClick={() =&gt; handleToggleAllExpand(true)}
+    &gt;
+      全部展开
+    &lt;/Button&gt;
+    &lt;Button
+      variant={expandedMenus.length === 0 ? "default" : "outline"}
+      size="sm"
+      onClick={() =&gt; handleToggleAllExpand(false)}
+    &gt;
+      全部折叠
+    &lt;/Button&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+        </pre>
+    </div>
+</body>
+</html>

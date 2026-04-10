@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>导入项目数据到 localStorage</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+        .info {
+            color: blue;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>导入项目数据到 localStorage</h1>
+        
+        <button onclick="importProjectData()">导入项目数据</button>
+        <button onclick="checkLocalStorage()">检查 localStorage</button>
+        <button onclick="clearLocalStorage()">清空 localStorage</button>
+        
+        <h2>操作结果</h2>
+        <div id="result"></div>
+        
+        <h2>localStorage 数据</h2>
+        <div id="localstorage-data"></div>
+    </div>
+    
+    <script>
+        // 完整的项目数据
+        const projectData = [
+            {
+                "id": "DJ26021201",
+                "title": "123",
+                "episodes": 2,
+                "languageCount": 0,
+                "remark": "-",
+                "createdAt": "2026-02-12",
+                "originalLanguage": "中文",
+                "videoType": "subtitle"
+            },
+            {
+                "id": "DJ24010101",
+                "title": "霸道总裁爱上我",
+                "episodes": 80,
+                "languageCount": 4,
+                "remark": "优先处理，客户催促",
+                "createdAt": "2024-01-01",
+                "originalLanguage": "中文",
+                "videoType": "subtitle"
+            },
+            {
+                "id": "DJ23120101",
+                "title": "穿越之锦绣良缘",
+                "episodes": 60,
+                "languageCount": 1,
+                "remark": "已完成翻译",
+                "createdAt": "2023-12-01",
+                "originalLanguage": "中文",
+                "videoType": "subtitle"
+            },
+            {
+                "id": "DJ24011001",
+                "title": "重生之商业帝国",
+                "episodes": 100,
+                "languageCount": 1,
+                "remark": "",
+                "createdAt": "2024-01-10",
+                "originalLanguage": "中文",
+                "videoType": "subtitle"
+            },
+            {
+                "id": "DJ24011401",
+                "title": "豪门逆袭记",
+                "episodes": 50,
+                "languageCount": 0,
+                "remark": "新项目，待启动",
+                "createdAt": "2024-01-14",
+                "originalLanguage": "中文",
+                "videoType": "subtitle"
+            },
+            {
+                "id": "DJ24010501",
+                "title": "甜蜜复仇",
+                "episodes": 70,
+                "languageCount": 1,
+                "remark": "翻译进度正常",
+                "createdAt": "2024-01-05",
+                "originalLanguage": "中文",
+                "videoType": "subtitle"
+            },
+            {
+                "id": "DJ23110101",
+                "title": "都市修仙传",
+                "episodes": 120,
+                "languageCount": 1,
+                "remark": "全部完成",
+                "createdAt": "2023-11-01",
+                "originalLanguage": "中文",
+                "videoType": "subtitle"
+            }
+        ];
+        
+        function log(message, type = 'info') {
+            const resultDiv = document.getElementById('result');
+            const p = document.createElement('p');
+            p.className = type;
+            p.textContent = message;
+            resultDiv.appendChild(p);
+        }
+        
+        function importProjectData() {
+            const resultDiv = document.getElementById('result');
+            const dataDiv = document.getElementById('localstorage-data');
+            resultDiv.innerHTML = '';
+            
+            try {
+                log('开始导入项目数据...');
+                
+                // 存储项目数据到 localStorage
+                localStorage.setItem('drama-projects', JSON.stringify(projectData));
+                
+                log('项目数据导入成功！', 'success');
+                log(`导入了 ${projectData.length} 个项目，包括：`, 'info');
+                
+                // 显示导入的项目
+                projectData.forEach(project => {
+                    log(`- ${project.id} - ${project.title}`, 'info');
+                });
+                
+                // 显示 localStorage 数据
+                checkLocalStorage();
+                
+            } catch (error) {
+                log(`导入过程中出错: ${error.message}`, 'error');
+            }
+        }
+        
+        function checkLocalStorage() {
+            const dataDiv = document.getElementById('localstorage-data');
+            
+            try {
+                const dramaProjects = localStorage.getItem('drama-projects');
+                
+                if (dramaProjects) {
+                    const projects = JSON.parse(dramaProjects);
+                    dataDiv.innerHTML = '<pre>' + JSON.stringify(projects, null, 2) + '</pre>';
+                } else {
+                    dataDiv.innerHTML = '<p class="error">localStorage 中没有 drama-projects 数据</p>';
+                }
+            } catch (error) {
+                dataDiv.innerHTML = `<p class="error">读取数据出错: ${error.message}</p>`;
+            }
+        }
+        
+        function clearLocalStorage() {
+            if (confirm('确定要清空 localStorage 中的项目数据吗？')) {
+                localStorage.removeItem('drama-projects');
+                log('已清空 localStorage 中的项目数据', 'success');
+                document.getElementById('localstorage-data').innerHTML = '';
+            }
+        }
+        
+        // 页面加载时检查 localStorage
+        window.onload = function() {
+            checkLocalStorage();
+        };
+    </script>
+</body>
+</html>

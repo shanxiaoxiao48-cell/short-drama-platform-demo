@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>修复项目数据</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+        .info {
+            color: blue;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>项目数据修复工具</h1>
+        
+        <button onclick="checkCurrentData()">检查当前数据</button>
+        <button onclick="fixProjectData()">修复项目数据</button>
+        <button onclick="clearData()">清空数据</button>
+        
+        <h2>操作结果</h2>
+        <div id="result"></div>
+        
+        <h2>当前localStorage数据</h2>
+        <div id="current-data"></div>
+    </div>
+    
+    <script>
+        // 默认演示项目数据
+        const defaultProjects = [
+            {
+                id: "DJ24010101",
+                title: "霸道总裁爱上我",
+                episodes: 80,
+                languageCount: 4,
+                remark: "优先处理，客户催促",
+                createdAt: "2024-01-01",
+                originalLanguage: "中文",
+                videoType: "subtitle"
+            },
+            {
+                id: "DJ23120101",
+                title: "穿越之锦绣良缘",
+                episodes: 60,
+                languageCount: 1,
+                remark: "已完成翻译",
+                createdAt: "2023-12-01",
+                originalLanguage: "中文",
+                videoType: "subtitle"
+            },
+            {
+                id: "DJ24011001",
+                title: "重生之商业帝国",
+                episodes: 100,
+                languageCount: 1,
+                remark: "",
+                createdAt: "2024-01-10",
+                originalLanguage: "中文",
+                videoType: "subtitle"
+            },
+            {
+                id: "DJ24011401",
+                title: "豪门逆袭记",
+                episodes: 50,
+                languageCount: 0,
+                remark: "新项目，待启动",
+                createdAt: "2024-01-14",
+                originalLanguage: "中文",
+                videoType: "subtitle"
+            },
+            {
+                id: "DJ24010501",
+                title: "甜蜜复仇",
+                episodes: 70,
+                languageCount: 1,
+                remark: "翻译进度正常",
+                createdAt: "2024-01-05",
+                originalLanguage: "中文",
+                videoType: "subtitle"
+            },
+            {
+                id: "DJ23110101",
+                title: "都市修仙传",
+                episodes: 120,
+                languageCount: 1,
+                remark: "全部完成",
+                createdAt: "2023-11-01",
+                originalLanguage: "中文",
+                videoType: "subtitle"
+            }
+        ];
+        
+        function log(message, type = 'info') {
+            const resultDiv = document.getElementById('result');
+            const p = document.createElement('p');
+            p.className = type;
+            p.textContent = message;
+            resultDiv.appendChild(p);
+        }
+        
+        function checkCurrentData() {
+            const resultDiv = document.getElementById('result');
+            const dataDiv = document.getElementById('current-data');
+            resultDiv.innerHTML = '';
+            dataDiv.innerHTML = '';
+            
+            try {
+                // 检查drama-projects
+                const dramaProjects = localStorage.getItem('drama-projects');
+                log('检查 localStorage 中的 drama-projects...');
+                
+                if (dramaProjects) {
+                    const projects = JSON.parse(dramaProjects);
+                    log(`当前项目数量: ${projects.length}`);
+                    
+                    // 检查默认项目是否存在
+                    defaultProjects.forEach(defaultProject => {
+                        const existingProject = projects.find(p => p.id === defaultProject.id);
+                        if (existingProject) {
+                            log(`默认项目 ${defaultProject.id} - ${defaultProject.title} 存在`);
+                        } else {
+                            log(`默认项目 ${defaultProject.id} - ${defaultProject.title} 缺失`, 'error');
+                        }
+                    });
+                    
+                    // 检查新创建的项目
+                    const newProject = projects.find(p => p.id === 'DJ26021201');
+                    if (newProject) {
+                        log(`新创建的项目 ${newProject.id} - ${newProject.title} 存在`);
+                        // 检查必要属性
+                        if (!newProject.originalLanguage) {
+                            log(`新创建的项目缺少 originalLanguage 属性`, 'error');
+                        }
+                        if (!newProject.videoType) {
+                            log(`新创建的项目缺少 videoType 属性`, 'error');
+                        }
+                    } else {
+                        log(`新创建的项目 DJ26021201 不存在`, 'error');
+                    }
+                    
+                    // 显示当前数据
+                    dataDiv.innerHTML = '<pre>' + JSON.stringify(projects, null, 2) + '</pre>';
+                } else {
+                    log('localStorage 中没有 drama-projects 数据', 'error');
+                }
+            } catch (error) {
+                log(`错误: ${error.message}`, 'error');
+            }
+        }
+        
+        function fixProjectData() {
+            const resultDiv = document.getElementById('result');
+            const dataDiv = document.getElementById('current-data');
+            resultDiv.innerHTML = '';
+            dataDiv.innerHTML = '';
+            
+            try {
+                log('开始修复项目数据...');
+                
+                // 获取当前项目数据
+                let currentProjects = [];
+                const savedProjects = localStorage.getItem('drama-projects');
+                
+                if (savedProjects) {
+                    currentProjects = JSON.parse(savedProjects);
+                    log(`当前有 ${currentProjects.length} 个项目`);
+                } else {
+                    log('localStorage 中没有项目数据，将创建新数据', 'info');
+                }
+                
+                // 确保所有默认项目存在
+                defaultProjects.forEach(defaultProject => {
+                    const existingProject = currentProjects.find(p => p.id === defaultProject.id);
+                    if (!existingProject) {
+                        log(`添加缺失的默认项目: ${defaultProject.id} - ${defaultProject.title}`, 'success');
+                        currentProjects.push(defaultProject);
+                    } else {
+                        // 确保默认项目属性完整
+                        let updated = false;
+                        Object.keys(defaultProject).forEach(key => {
+                            if (existingProject[key] === undefined || existingProject[key] === null) {
+                                existingProject[key] = defaultProject[key];
+                                updated = true;
+                            }
+                        });
+                        if (updated) {
+                            log(`更新默认项目属性: ${defaultProject.id} - ${defaultProject.title}`, 'success');
+                        }
+                    }
+                });
+                
+                // 确保新创建的项目属性完整
+                const newProject = currentProjects.find(p => p.id === 'DJ26021201');
+                if (newProject) {
+                    let updated = false;
+                    if (!newProject.originalLanguage) {
+                        newProject.originalLanguage = '中文';
+                        updated = true;
+                    }
+                    if (!newProject.videoType) {
+                        newProject.videoType = 'subtitle';
+                        updated = true;
+                    }
+                    if (updated) {
+                        log(`更新新创建项目的属性: ${newProject.id} - ${newProject.title}`, 'success');
+                    }
+                }
+                
+                // 保存修复后的数据
+                localStorage.setItem('drama-projects', JSON.stringify(currentProjects));
+                log(`修复完成，保存了 ${currentProjects.length} 个项目`, 'success');
+                
+                // 显示修复后的数据
+                dataDiv.innerHTML = '<h3>修复后的数据:</h3><pre>' + JSON.stringify(currentProjects, null, 2) + '</pre>';
+                
+            } catch (error) {
+                log(`修复过程中出错: ${error.message}`, 'error');
+            }
+        }
+        
+        function clearData() {
+            if (confirm('确定要清空所有项目数据吗？')) {
+                localStorage.removeItem('drama-projects');
+                log('已清空 localStorage 中的项目数据', 'success');
+                document.getElementById('current-data').innerHTML = '';
+            }
+        }
+        
+        // 页面加载时自动检查数据
+        window.onload = function() {
+            checkCurrentData();
+        };
+    </script>
+</body>
+</html>
