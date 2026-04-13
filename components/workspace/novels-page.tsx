@@ -18,6 +18,8 @@ import { TranslationTaskQueueDialog, TranslationTask } from "./translation-task-
 import { VideoDownloadDialog, SubtitleDownloadDialog, ConfirmDownloadDialog, DownloadQueueDialog, UploadFormDialog, UploadQueueDialog, OverwriteConfirmDialog, UploadFormData, UploadQueueItem, } from "./download-upload-dialogs"
 import { CompletedWorkflowDialog, OverwriteDialog, AITranslateDialog, VideoEraseDialog, VideoEraseRegionDialog, SubtitleMountDialog, VideoCompressDialog, SuccessDialog, TaskAssignDialog, } from "./workflow-dialogs"
 import { BatchOperationDialog } from "./batch-operation-dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Checkbox } from "@/components/ui/checkbox"
 import { FileBrowserPage } from "./file-browser-page"
 
 interface NovelLanguageVariantCardProps {
@@ -178,6 +180,10 @@ export function NovelsPage({ projectId, projectTitle, onOpenEditor, onBack }: No
   // 批量操作对话框
   const [showBatchDialog, setShowBatchDialog] = useState(false)
   const [batchMode, setBatchMode] = useState<"delete" | "download">("delete")
+  const [showDownloadConfirm, setShowDownloadConfirm] = useState(false)
+  const [downloadType, setDownloadType] = useState<"正文" | "术语表">("正文")
+  const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set())
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showFileBrowser, setShowFileBrowser] = useState(false)
   const [showWorkflowBar, setShowWorkflowBar] = useState(false)
   
@@ -1162,26 +1168,55 @@ export function NovelsPage({ projectId, projectTitle, onOpenEditor, onBack }: No
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* 下载按钮 */}
+              {/* 下载下拉菜单 - 需要选中卡片 */}
+              {selectedCards.size > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Download className="w-4 h-4" />
+                      下载（{selectedCards.size}）
+                      <ChevronDown className="w-3 h-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => { setDownloadType("正文"); setShowDownloadConfirm(true) }}>
+                      正文
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => { setDownloadType("术语表"); setShowDownloadConfirm(true) }}>
+                      术语表
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+
+              {/* 删除按钮 - 需要选中卡片 */}
+              {selectedCards.size > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 text-destructive hover:text-destructive/80"
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  删除（{selectedCards.size}）
+                </Button>
+              )}
+
+              {/* 全选按钮 */}
               <Button
                 variant="outline"
                 size="sm"
                 className="gap-2"
-                onClick={() => { setBatchMode("download"); setShowBatchDialog(true) }}
+                onClick={() => {
+                  if (selectedCards.size === novelVariants.length) setSelectedCards(new Set())
+                  else setSelectedCards(new Set(novelVariants.map(v => v.id)))
+                }}
               >
-                <Download className="w-4 h-4" />
-                下载
-              </Button>
-
-              {/* 删除按钮 */}
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 text-destructive hover:text-destructive/80"
-                onClick={() => { setBatchMode("delete"); setShowBatchDialog(true) }}
-              >
-                <Trash2 className="w-4 h-4" />
-                删除
+                <Checkbox
+                  checked={novelVariants.length > 0 && selectedCards.size === novelVariants.length}
+                  className="w-3.5 h-3.5 pointer-events-none"
+                />
+                {selectedCards.size === novelVariants.length && novelVariants.length > 0 ? "取消全选" : "全选"}
               </Button>
             </div>
           </TooltipProvider>
@@ -1194,15 +1229,34 @@ export function NovelsPage({ projectId, projectTitle, onOpenEditor, onBack }: No
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
           {novelVariants.map((variant) => (
-            <NovelLanguageVariantCard
-              key={variant.id}
-              variant={variant}
-              onClick={() => handleOpenVariant(variant.id)}
-              onDoubleClick={() => handleCardDoubleClick(variant.id)}
-              onEnterEditor={() => handleEnterEditor(variant.id)}
-              isSelected={selectedVariant === variant.id}
-              isPinned={pinnedVariant === variant.id}
-            />
+            <div key={variant.id} className="relative group">
+              {/* Selection checkbox */}
+              <div className={cn(
+                "absolute top-2 left-2 z-10 transition-opacity",
+                selectedCards.has(variant.id) ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+              )}>
+                <Checkbox
+                  checked={selectedCards.has(variant.id)}
+                  onCheckedChange={() => {
+                    setSelectedCards(prev => {
+                      const next = new Set(prev)
+                      if (next.has(variant.id)) next.delete(variant.id); else next.add(variant.id)
+                      return next
+                    })
+                  }}
+                  onClick={e => e.stopPropagation()}
+                  className="w-4 h-4 bg-background/80"
+                />
+              </div>
+              <NovelLanguageVariantCard
+                variant={variant}
+                onClick={() => handleOpenVariant(variant.id)}
+                onDoubleClick={() => handleCardDoubleClick(variant.id)}
+                onEnterEditor={() => handleEnterEditor(variant.id)}
+                isSelected={selectedVariant === variant.id}
+                isPinned={pinnedVariant === variant.id}
+              />
+            </div>
           ))}
         </div>
       </div>
@@ -1709,6 +1763,73 @@ export function NovelsPage({ projectId, projectTitle, onOpenEditor, onBack }: No
           }
         }}
       />
+
+      {/* Delete Confirm Dialog */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>确认删除</DialogTitle>
+            <DialogDescription>
+              确定要删除选中的 {selectedCards.size} 个语言版本吗？此操作不可撤销。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2 text-sm text-muted-foreground">
+            {Array.from(selectedCards).map(id => novelVariants.find(v => v.id === id)?.targetLanguage).filter(Boolean).join("、")}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>取消</Button>
+            <Button variant="destructive" onClick={() => {
+              saveVariants(novelVariants.filter(v => !selectedCards.has(v.id)))
+              setSelectedCards(new Set())
+              setShowDeleteConfirm(false)
+            }}>确认删除</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Download Confirm Dialog */}
+      <Dialog open={showDownloadConfirm} onOpenChange={setShowDownloadConfirm}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>下载{downloadType}</DialogTitle>
+            <DialogDescription>
+              确认下载选中语言的{downloadType}文件
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-2 text-sm">
+            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <span className="text-muted-foreground">选中语言</span>
+              <span className="font-medium">{Array.from(selectedCards).map(id => novelVariants.find(v => v.id === id)?.targetLanguage).filter(Boolean).join("、") || "无"}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <span className="text-muted-foreground">文件类型</span>
+              <span className="font-medium">{downloadType}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <span className="text-muted-foreground">文件数量</span>
+              <span className="font-medium">{selectedCards.size} 个</span>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDownloadConfirm(false)}>取消</Button>
+            <Button onClick={() => {
+              setShowDownloadConfirm(false)
+              const items = Array.from(selectedCards).map(id => {
+                const lang = novelVariants.find(v => v.id === id)?.targetLanguage || "未知"
+                return {
+                  id: `dl-${id}-${Date.now()}`,
+                  name: `${lang}_${downloadType}.${downloadType === "正文" ? "txt" : "xlsx"}`,
+                  progress: 0,
+                  status: "pending" as const,
+                }
+              })
+              setDownloadQueueItems(items)
+              setShowDownloadQueue(true)
+              items.forEach(item => simulateDownloadProgress(item.id))
+            }}>确认下载（{selectedCards.size}）</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -232,6 +232,15 @@ export function NovelEditorPage({
   // Active paragraph for sync
   const [activeParagraphIdx, setActiveParagraphIdx] = useState<number>(0)
 
+  // Comments (review/QC can add, translator can view)
+  const [showCommentsPanel, setShowCommentsPanel] = useState(isReviewStage || isQualityCheckStage)
+  const [comments, setComments] = useState<Array<{ paragraphIdx: number; text: string; author: string; timestamp: string }>>([
+    { paragraphIdx: 0, text: "这段翻译语序不太自然，建议调整", author: "审校员A", timestamp: "2026-04-10 14:30" },
+    { paragraphIdx: 3, text: "术语'霓虹灯'翻译不一致，请统一", author: "质检员B", timestamp: "2026-04-11 09:15" },
+  ])
+  const [newComment, setNewComment] = useState("")
+  const canAddComment = isReviewStage || isQualityCheckStage
+
   // Find & Replace
   const [showFindBar, setShowFindBar] = useState(false)
   const [findText, setFindText] = useState("")
@@ -391,6 +400,12 @@ export function NovelEditorPage({
         {(isReviewStage || isQualityCheckStage || isManualTranslate) && (
           <Button variant={showHistoryPanel ? "default" : "ghost"} size="sm" className="h-7 text-xs gap-1 shrink-0"
             onClick={() => setShowHistoryPanel(!showHistoryPanel)}><History className="w-3.5 h-3.5" />历史</Button>
+        )}
+        {(isReviewStage || isQualityCheckStage || isManualTranslate) && (
+          <Button variant={showCommentsPanel ? "default" : "ghost"} size="sm" className="h-7 text-xs gap-1 shrink-0"
+            onClick={() => setShowCommentsPanel(!showCommentsPanel)}>
+            <AlertCircle className="w-3.5 h-3.5" />意见{comments.length > 0 ? `(${comments.length})` : ""}
+          </Button>
         )}
         {(isReviewStage || isQualityCheckStage || isTermReview || (isManualTranslate && !isPreTranslation)) && (
           <Separator orientation="vertical" className="h-5 mx-1 shrink-0" />
@@ -555,6 +570,72 @@ export function NovelEditorPage({
                         </div>
                       )
                     })()}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+
+            {/* Comments panel */}
+            {showCommentsPanel && (
+              <div className="w-[300px] shrink-0 flex flex-col overflow-hidden border-l border-border">
+                <div className="shrink-0 px-3 py-2 border-b border-border/50 bg-muted/30 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-xs font-medium">修改意见（{comments.length}）</span>
+                  </div>
+                  <Button variant="ghost" size="icon" className="w-5 h-5" onClick={() => setShowCommentsPanel(false)}><X className="w-3 h-3" /></Button>
+                </div>
+                {/* Add comment (review/QC only) */}
+                {canAddComment && (
+                  <div className="shrink-0 p-2 border-b border-border/50">
+                    <div className="flex gap-1.5">
+                      <Input
+                        placeholder={`对段落 #${activeParagraphIdx + 1} 写意见...`}
+                        value={newComment}
+                        onChange={e => setNewComment(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === "Enter" && newComment.trim()) {
+                            setComments(prev => [...prev, { paragraphIdx: activeParagraphIdx, text: newComment.trim(), author: isReviewStage ? "审校员" : "质检员", timestamp: new Date().toLocaleString() }])
+                            setNewComment("")
+                          }
+                        }}
+                        className="h-7 text-xs flex-1"
+                      />
+                      <Button size="sm" className="h-7 text-xs px-2" disabled={!newComment.trim()}
+                        onClick={() => {
+                          if (newComment.trim()) {
+                            setComments(prev => [...prev, { paragraphIdx: activeParagraphIdx, text: newComment.trim(), author: isReviewStage ? "审校员" : "质检员", timestamp: new Date().toLocaleString() }])
+                            setNewComment("")
+                          }
+                        }}>添加</Button>
+                    </div>
+                  </div>
+                )}
+                <ScrollArea className="flex-1">
+                  <div className="p-2 space-y-2">
+                    {comments.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-8">暂无修改意见</p>
+                    ) : (
+                      comments.map((c, i) => (
+                        <div key={i} className={cn("p-2 rounded-md border text-xs space-y-1",
+                          c.paragraphIdx === activeParagraphIdx ? "border-primary/50 bg-primary/5" : "border-border bg-muted/30"
+                        )}>
+                          <div className="flex items-center justify-between">
+                            <span className="text-primary font-medium">段落 #{c.paragraphIdx + 1}</span>
+                            {canAddComment && (
+                              <button className="text-muted-foreground hover:text-destructive" onClick={() => setComments(prev => prev.filter((_, j) => j !== i))}>
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                          <p className="text-foreground">{c.text}</p>
+                          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                            <span>{c.author}</span>
+                            <span>{c.timestamp}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </ScrollArea>
               </div>
