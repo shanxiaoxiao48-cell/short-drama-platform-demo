@@ -28,7 +28,6 @@ import { Badge } from "@/components/ui/badge"
 import { usePermission } from "@/contexts/permission-context"
 import { CultureWashDialog, WashConfig } from "@/components/novel-wash/culture-wash-dialog"
 import { WashProjectDetail } from "@/components/novel-wash/wash-project-detail"
-import { WashWorkspace } from "@/components/novel-wash/wash-workspace"
 
 interface NovelProject {
   id: string
@@ -128,7 +127,6 @@ export function NovelProjectsPage({ onOpenNovelWorkspace, autoOpenCreate, onCrea
   const [showTypeSelect, setShowTypeSelect] = useState(false)
   const [washConfig, setWashConfig] = useState<WashConfig | null>(null)
   const [showWashWorkspace, setShowWashWorkspace] = useState(false)
-  const [showWashFlow, setShowWashFlow] = useState(false) // true = show full flow from analyzing, false = show detail page
   const [newProjectTitle, setNewProjectTitle] = useState("")
   const [newSourceLanguage, setNewSourceLanguage] = useState("中文")
   const [createUploadedFiles, setCreateUploadedFiles] = useState<string[]>([])
@@ -261,30 +259,7 @@ export function NovelProjectsPage({ onOpenNovelWorkspace, autoOpenCreate, onCrea
       project.id.toLowerCase().includes(searchQuery.toLowerCase())
   })
 
-  // Show wash flow (from "开始分析" button - full flow)
-  if (showWashFlow && washConfig) {
-    return (
-      <WashWorkspace
-        config={washConfig}
-        onBack={() => { setShowWashFlow(false); setShowWashWorkspace(true) }}
-        onCreateTranslationProject={(title, content) => {
-          setShowWashFlow(false)
-          const newProject: NovelProject = {
-            id: generateProjectId(),
-            title: `${title}（翻译）`,
-            chapters: 0,
-            languageCount: 0,
-            remark: `洗稿自：${washConfig.sourceCountry} → ${washConfig.targetCountry}`,
-            createdAt: new Date().toISOString().split("T")[0],
-            projectType: "translation",
-          }
-          saveProjects([newProject, ...projects])
-        }}
-      />
-    )
-  }
-
-  // Show wash project detail (from clicking a wash project in list)
+  // Show wash project detail
   if (showWashWorkspace && washConfig) {
     return (
       <WashProjectDetail
@@ -362,7 +337,7 @@ export function NovelProjectsPage({ onOpenNovelWorkspace, autoOpenCreate, onCrea
                 onClick={() => {
                   if (project.projectType === "wash") {
                     // 洗稿项目：进入洗稿工作台
-                    setWashConfig(project.washConfig || { projectName: project.title, sourceFile: "", sourceCountry: "美国", targetCountry: "中国" })
+                    setWashConfig(project.washConfig || { projectName: project.title, sourceFile: "", sourceCountry: "", targetCountry: "", washMode: "ancient_to_werewolf" })
                     setShowWashWorkspace(true)
                   } else {
                     // 翻译项目：进入多语种页面
