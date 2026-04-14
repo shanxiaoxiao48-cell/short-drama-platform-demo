@@ -266,14 +266,16 @@ export function NovelProjectsPage({ onOpenNovelWorkspace, autoOpenCreate, onCrea
         projectName={washConfig.projectName}
         config={washConfig}
         onBack={() => setShowWashWorkspace(false)}
-        onCreateTranslationProject={(title, content) => {
+        onCreateTranslationProject={(title, meta) => {
           setShowWashWorkspace(false)
+          // meta format: "古言转狼人|原文名"
+          const [washMode, originalName] = meta.includes("|") ? meta.split("|") : [meta, ""]
           const newProject: NovelProject = {
             id: generateProjectId(),
-            title: `${title}（翻译）`,
+            title: title,
             chapters: 0,
             languageCount: 0,
-            remark: `洗稿自：${washConfig.sourceCountry} → ${washConfig.targetCountry}`,
+            remark: `原文：${originalName || washConfig.projectName} | ${washMode}洗稿`,
             createdAt: new Date().toISOString().split("T")[0],
             projectType: "translation",
           }
