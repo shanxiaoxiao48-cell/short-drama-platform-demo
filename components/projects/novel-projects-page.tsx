@@ -348,7 +348,6 @@ export function NovelProjectsPage({ onOpenNovelWorkspace, autoOpenCreate, onCrea
               <TableHead className="text-muted-foreground w-24">ID</TableHead>
               <TableHead className="text-muted-foreground">小说名称</TableHead>
               <TableHead className="text-muted-foreground text-center">项目类型</TableHead>
-              <TableHead className="text-muted-foreground text-center">章节数量</TableHead>
               <TableHead className="text-muted-foreground text-center">语种数量</TableHead>
               <TableHead className="text-muted-foreground">备注</TableHead>
               <TableHead className="text-muted-foreground">创建时间</TableHead>
@@ -402,9 +401,6 @@ export function NovelProjectsPage({ onOpenNovelWorkspace, autoOpenCreate, onCrea
                   <span className={cn("text-xs px-2 py-0.5 rounded-full", project.projectType === "wash" ? "bg-purple-500/10 text-purple-600" : "bg-blue-500/10 text-blue-600")}>
                     {project.projectType === "wash" ? "洗稿" : "翻译"}
                   </span>
-                </TableCell>
-                <TableCell className="text-center text-foreground">
-                  {project.chapters}
                 </TableCell>
                 <TableCell className="text-center text-foreground">
                   {project.languageCount}

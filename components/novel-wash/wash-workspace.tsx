@@ -22,6 +22,7 @@ interface WashWorkspaceProps {
   onBack: () => void
   onCreateTranslationProject: (title: string, content: string) => void
   initialPhase?: WashPhase
+  onWashComplete?: (targetCountry: string, genres: string[]) => void
 }
 
 // Mock data
@@ -116,7 +117,7 @@ const mockGeneratedText = `天玄宗大殿之上，万千弟子齐聚。宗主�
 
 因为有人告诉他——如果他不废除婚约，苏晚会死。`
 
-export function WashWorkspace({ config, onBack, onCreateTranslationProject, initialPhase }: WashWorkspaceProps) {
+export function WashWorkspace({ config, onBack, onCreateTranslationProject, initialPhase, onWashComplete }: WashWorkspaceProps) {
   const [phase, setPhase] = useState<WashPhase>(initialPhase || "analyzing")
   const [progress, setProgress] = useState(0)
   const [selectedGenres, setSelectedGenres] = useState<string[]>([])
@@ -137,7 +138,7 @@ export function WashWorkspace({ config, onBack, onCreateTranslationProject, init
   // Simulate generation
   useEffect(() => {
     if (phase !== "generating") return
-    const t = setInterval(() => { setGenProgress(p => { if (p >= 100) { clearInterval(t); setTimeout(() => setPhase("text_edit"), 400); return 100 }; return p + Math.random() * 6 + 2 }) }, 350)
+    const t = setInterval(() => { setGenProgress(p => { if (p >= 100) { clearInterval(t); setTimeout(() => { setPhase("text_edit") }, 400); return 100 }; return p + Math.random() * 6 + 2 }) }, 350)
     return () => clearInterval(t)
   }, [phase])
 
@@ -383,17 +384,20 @@ export function WashWorkspace({ config, onBack, onCreateTranslationProject, init
               <div className="flex items-center gap-3">
                 <h2 className="text-sm font-semibold">洗稿结果</h2>
                 <span className="text-xs text-muted-foreground">可直接编辑文本</span>
-                <Badge variant="outline" className="text-xs">{config.sourceCountry} → {config.targetCountry} · {selectedGenres.join("+")}</Badge>
+                <Badge variant="outline" className="text-xs">{mockAnalysis.sourceGenres.join("/")} → {selectedGenres.join("/")}</Badge>
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => setPhase("mapping_edit")}>
-                  <ArrowLeft className="w-3.5 h-3.5 mr-1" />返回映射
+                  返回映射
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => { onWashComplete?.(config.targetCountry, selectedGenres); onBack() }}>
+                  <CheckCircle className="w-3.5 h-3.5 mr-1" />完成
                 </Button>
                 <Button variant="outline" size="sm" onClick={handleStartNewWash}>
                   <RotateCcw className="w-3.5 h-3.5 mr-1" />洗另一个文化
                 </Button>
                 <Button size="sm" onClick={() => onCreateTranslationProject(config.projectName, generatedText)}>
-                  <CheckCircle className="w-3.5 h-3.5 mr-1" />转入翻译流程
+                  转入翻译流程
                 </Button>
               </div>
             </div>
@@ -408,7 +412,7 @@ export function WashWorkspace({ config, onBack, onCreateTranslationProject, init
             </div>
             <div className="shrink-0 border-t border-border/50 px-4 py-1.5 flex items-center justify-between text-xs text-muted-foreground bg-card">
               <span>{generatedText.length.toLocaleString()} 字符</span>
-              <span>{config.sourceCountry} · {mockAnalysis.sourceGenres.join("/")} → {config.targetCountry} · {selectedGenres.join("/")}</span>
+              <span>{mockAnalysis.sourceGenres.join("/")} → {selectedGenres.join("/")}</span>
             </div>
           </div>
         )}

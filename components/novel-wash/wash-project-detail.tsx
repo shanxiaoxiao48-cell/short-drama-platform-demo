@@ -4,8 +4,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { ArrowLeft, FileText, Sparkles, Plus, Clock, CheckCircle, ArrowRight, Globe, BookOpen } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ArrowLeft, Sparkles, Plus, Clock, CheckCircle, ArrowRight, Globe, BookOpen, RotateCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { WashConfig } from "./culture-wash-dialog"
 import { WashWorkspace } from "./wash-workspace"
@@ -30,22 +30,45 @@ export function WashProjectDetail({ projectName, config, onBack, onCreateTransla
   const [activeVersion, setActiveVersion] = useState<string | null>(null)
   const [editingSource, setEditingSource] = useState(false)
   const [sourceText, setSourceText] = useState("The grand hall of the Dark Moon Pack was filled with wolves from every rank. Alpha Ethan Black stood at the center, his cold eyes scanning the crowd...\n\n(原文内容，点击可编辑)")
+  const [showCountrySelect, setShowCountrySelect] = useState(false)
+  const [selectedTargetCountry, setSelectedTargetCountry] = useState("")
+  const [pendingAction, setPendingAction] = useState<"analyze" | "rewash">("analyze")
 
-  const [versions] = useState<WashVersion[]>([])
+  const countries = ["中国", "韩国", "日本", "泰国", "印度", "印尼", "越南", "菲律宾", "中东", "巴西", "美国", "英国", "法国", "德国"]
+
+  const [versions, setVersions] = useState<WashVersion[]>([])
 
   const hasAnalyzed = versions.length > 0
 
-  // "new_analyze" = first time, full flow from analyzing
-  // "new" = subsequent, skip to genre_select
-  if (activeVersion === "new_analyze") {
-    return <WashWorkspace config={config} onBack={() => setActiveVersion(null)} onCreateTranslationProject={onCreateTranslationProject} initialPhase="analyzing" />
+  // When returning from wash workspace, add the completed version
+  const handleWashComplete = (targetCountry: string, genres: string[]) => {
+    const newVer: WashVersion = {
+      id: `v${versions.length + 1}`,
+      targetCountry,
+      genres,
+      status: "completed",
+      createdAt: new Date().toLocaleString("zh-CN"),
+      wordCount: 140000 + Math.round(Math.random() * 20000),
+    }
+    setVersions(prev => [...prev, newVer])
+    setActiveVersion(null)
   }
+
+  // Start flow directly
+  const startAnalyze = () => setActiveVersion("new_analyze")
+  const startRewash = () => setActiveVersion("new")
+
+  // "new_analyze" = first time, full flow from analyzing
+  if (activeVersion === "new_analyze") {
+    return <WashWorkspace config={config} onBack={() => setActiveVersion(null)} onCreateTranslationProject={onCreateTranslationProject} initialPhase="analyzing" onWashComplete={handleWashComplete} />
+  }
+  // "new" = subsequent, skip to genre_select
   if (activeVersion === "new") {
-    return <WashWorkspace config={config} onBack={() => setActiveVersion(null)} onCreateTranslationProject={onCreateTranslationProject} initialPhase="genre_select" />
+    return <WashWorkspace config={config} onBack={() => setActiveVersion(null)} onCreateTranslationProject={onCreateTranslationProject} initialPhase="genre_select" onWashComplete={handleWashComplete} />
   }
   if (activeVersion) {
     const ver = versions.find(v => v.id === activeVersion)
-    return <WashWorkspace config={{ ...config, targetCountry: ver?.targetCountry || config.targetCountry }} onBack={() => setActiveVersion(null)} onCreateTranslationProject={onCreateTranslationProject} initialPhase="text_edit" />
+    return <WashWorkspace config={{ ...config, targetCountry: ver?.targetCountry || "" }} onBack={() => setActiveVersion(null)} onCreateTranslationProject={onCreateTranslationProject} initialPhase="text_edit" />
   }
 
   if (editingSource) {
@@ -97,12 +120,12 @@ export function WashProjectDetail({ projectName, config, onBack, onCreateTransla
             </div>
           </div>
           {hasAnalyzed ? (
-            <Button onClick={() => setActiveVersion("new")}>
+            <Button onClick={startRewash}>
               <Plus className="w-4 h-4 mr-2" />
-              洗另一个版本
+              再洗一个版本
             </Button>
           ) : (
-            <Button onClick={() => setActiveVersion("new_analyze")}>
+            <Button onClick={startAnalyze}>
               <Sparkles className="w-4 h-4 mr-2" />
               开始分析
             </Button>
@@ -173,15 +196,14 @@ export function WashProjectDetail({ projectName, config, onBack, onCreateTransla
               </Card>
             ))}
 
-            {/* Add new card */}
             <Card
               className="p-4 border-dashed border-2 border-border cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all flex flex-col items-center justify-center min-h-[200px] gap-3"
-              onClick={() => setActiveVersion(hasAnalyzed ? "new" : "new_analyze")}
+              onClick={hasAnalyzed ? startRewash : startAnalyze}
             >
               <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
                 {hasAnalyzed ? <Plus className="w-5 h-5 text-muted-foreground" /> : <Sparkles className="w-5 h-5 text-muted-foreground" />}
               </div>
-              <p className="text-sm text-muted-foreground">{hasAnalyzed ? "洗另一个文化版本" : "开始分析并洗稿"}</p>
+              <p className="text-sm text-muted-foreground">{hasAnalyzed ? "再洗一个文化版本" : "开始分析并洗稿"}</p>
             </Card>
           </div>
         </div>

@@ -19,13 +19,13 @@ export interface WashConfig {
   projectName: string
   sourceFile: string
   sourceCountry: string
-  targetCountry: string
+  targetCountry: string // set later in the flow
 }
 
 const countries = ["美国", "英国", "韩国", "日本", "中国", "泰国", "印度", "印尼", "越南", "菲律宾", "中东", "巴西", "墨西哥", "法国", "德国", "俄罗斯", "西班牙"]
 
 export function CultureWashDialog({ open, onOpenChange, onSubmit }: CultureWashDialogProps) {
-  const [config, setConfig] = useState<WashConfig>({ projectName: "", sourceFile: "", sourceCountry: "美国", targetCountry: "中国" })
+  const [config, setConfig] = useState<WashConfig>({ projectName: "", sourceFile: "", sourceCountry: "美国", targetCountry: "" })
   const [isDragOver, setIsDragOver] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -88,23 +88,6 @@ export function CultureWashDialog({ open, onOpenChange, onSubmit }: CultureWashD
           <div className="space-y-1.5">
             <Label>项目名称 <span className="text-destructive">*</span></Label>
             <Input placeholder="例如：狼人文洗稿" value={config.projectName} onChange={e => setConfig({ ...config, projectName: e.target.value })} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>源文化国家</Label>
-              <Select value={config.sourceCountry} onValueChange={v => setConfig({ ...config, sourceCountry: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{countries.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>目标文化国家</Label>
-              <Select value={config.targetCountry} onValueChange={v => setConfig({ ...config, targetCountry: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{countries.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
           </div>
         </div>
         <DialogFooter>

@@ -16,7 +16,8 @@ import { WorkflowSteps } from "./workflow-steps"
 import { TaskQueueDialog } from "./task-queue-dialog"
 import { TranslationTaskQueueDialog, TranslationTask } from "./translation-task-queue-dialog"
 import { VideoDownloadDialog, SubtitleDownloadDialog, ConfirmDownloadDialog, DownloadQueueDialog, UploadFormDialog, UploadQueueDialog, OverwriteConfirmDialog, UploadFormData, UploadQueueItem, } from "./download-upload-dialogs"
-import { CompletedWorkflowDialog, OverwriteDialog, AITranslateDialog, VideoEraseDialog, VideoEraseRegionDialog, SubtitleMountDialog, VideoCompressDialog, SuccessDialog, TaskAssignDialog, } from "./workflow-dialogs"
+import { CompletedWorkflowDialog, OverwriteDialog, AITranslateDialog, VideoEraseDialog, VideoEraseRegionDialog, SubtitleMountDialog, VideoCompressDialog, SuccessDialog, } from "./workflow-dialogs"
+import { NovelTaskAssignDialog } from "./novel-task-assign-dialog"
 import { BatchOperationDialog } from "./batch-operation-dialog"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -169,8 +170,9 @@ const stageIcons: Record<string, any> = {
 }
 
 export function NovelsPage({ projectId, projectTitle, onOpenEditor, onBack }: NovelsPageProps) {
-  const [selectedVariant, setSelectedVariant] = useState<string | null>(null)
-  const [pinnedVariant, setPinnedVariant] = useState<string | null>(null)
+  const [selectedVariant, setSelectedVariant] = useState<string | null>("0")
+  const [pinnedVariant, setPinnedVariant] = useState<string | null>("0")
+  const [showWorkflowBar, setShowWorkflowBar] = useState(true)
   const [showUploadDialog, setShowUploadDialog] = useState(false)
   const [showTranslateDialog, setShowTranslateDialog] = useState(false)
   const [showTerminologyDialog, setShowTerminologyDialog] = useState(false)
@@ -185,7 +187,6 @@ export function NovelsPage({ projectId, projectTitle, onOpenEditor, onBack }: No
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set())
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showFileBrowser, setShowFileBrowser] = useState(false)
-  const [showWorkflowBar, setShowWorkflowBar] = useState(false)
   
   // Dialog states
   const [showCompletedDialog, setShowCompletedDialog] = useState(false)
@@ -1442,7 +1443,8 @@ export function NovelsPage({ projectId, projectTitle, onOpenEditor, onBack }: No
                           <div className="flex gap-1.5 bg-card border border-border rounded-full px-2 py-1 shadow-lg" style={{ marginTop: "-32px" }}>
                             {[
                               { type: "translation" as const, label: "翻译", icon: PenTool },
-                              { type: "quality_check" as const, label: "质检", icon: ClipboardCheck },
+                              { type: "quality_check" as const, label: "审校", icon: CheckCircle2 },
+                              { type: "compress" as const, label: "质检", icon: ClipboardCheck },
                             ].map(item => (
                               <button
                                 key={item.type}
@@ -1708,16 +1710,19 @@ export function NovelsPage({ projectId, projectTitle, onOpenEditor, onBack }: No
       />
 
       {/* 任务分配对话框 */}
-      <TaskAssignDialog
+      <NovelTaskAssignDialog
         open={showTaskAssign}
         onOpenChange={setShowTaskAssign}
-        onSubmit={handleTaskAssignSubmit}
-        totalEpisodes={novelVariants[0]?.totalChapters || 50}
+        onSubmit={(assignments) => {
+          setConfirmedAssignments(prev => ({ ...prev, ...assignments }))
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(`novel-task-assignments-${projectId}`, JSON.stringify({ ...confirmedAssignments, ...assignments }))
+          }
+        }}
         taskType={taskAssignType}
         languageVariants={novelVariants
           .filter(v => !v.targetLanguage.includes("原语言") && !v.targetLanguage.includes("源语言"))
-          .map(v => ({ id: v.id, targetLanguage: v.targetLanguage, totalEpisodes: v.totalChapters }))}
-        initialAssignments={confirmedAssignments}
+          .map(v => ({ id: v.id, targetLanguage: v.targetLanguage }))}
       />
 
       {/* 批量操作对话框（删除/下载） */}
