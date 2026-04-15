@@ -14,8 +14,9 @@ import {
 import { cn } from "@/lib/utils"
 import { WashConfig } from "./culture-wash-dialog"
 import {
-  ANALYSIS_CHARACTERS, ANALYSIS_STRUCTURE, ANALYSIS_EMOTIONS, ANALYSIS_STORYLINE,
-  MAPPING_WOLF, MAPPING_MAFIA, WASH_WOLF, WASH_MAFIA,
+  CHARACTERS, STRUCTURE, EMOTIONS, STORYLINE, WOLF_MAPPING,
+  WASH_WOLF, WASH_MAFIA,
+  type CharacterData, type ActData, type EmotionData, type MappingFramework,
 } from "./wash-mock-data"
 
 interface WashProjectDetailProps {
@@ -29,21 +30,13 @@ type Phase = "idle" | "analyzing" | "analyzed" | "mapping" | "mapped" | "generat
 // Which step page to view (can differ from phase when navigating back)
 type ViewStep = "source" | "analysis" | "mapping" | "wash"
 
-interface AnalysisData {
-  characters: string    // 原作人物介绍 full text
-  structure: string     // 原著三幕式结构分析 full text
-  emotions: string      // 情感关系分析 full text
-  storyline: string     // 原作故事主线 full text
-}
-
 interface WashVersion {
   id: string
   mode: string
   phase: Phase
   progress: number
   washTitle: string
-  analysisData: AnalysisData
-  mappingResult: string   // full text of mapping framework
+  mappingResult: MappingFramework
   washResult: string
   createdAt: string
 }
@@ -67,8 +60,7 @@ function createVersion(modeId: string): WashVersion {
     id: `v_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     mode: modeId, phase: "idle", progress: 0,
     washTitle: titles[modeId] || "洗稿作品",
-    analysisData: { characters: ANALYSIS_CHARACTERS, structure: ANALYSIS_STRUCTURE, emotions: ANALYSIS_EMOTIONS, storyline: ANALYSIS_STORYLINE },
-    mappingResult: modeId === "period_to_mafia" ? MAPPING_MAFIA : MAPPING_WOLF,
+    mappingResult: JSON.parse(JSON.stringify(WOLF_MAPPING)),
     washResult: modeId === "period_to_mafia" ? WASH_MAFIA : WASH_WOLF,
     createdAt: new Date().toLocaleString("zh-CN"),
   }
@@ -359,67 +351,226 @@ export function WashProjectDetail({ projectName, config, onBack, onCreateTransla
           </div>
         )}
 
-        {/* ===== PAGE: Analysis results (4 files as text sections) ===== */}
-        {viewingStep === "analysis" && (() => {
-          const isEd = editingStep === "analysis"
-          const ad = activeVersion.analysisData
-          const updateAd = (field: keyof AnalysisData, val: string) => updateVersion(activeVersion.id, { analysisData: { ...ad, [field]: val } })
-          const sections = [
-            { key: "characters" as const, icon: <Users className="w-4 h-4 text-muted-foreground" />, title: "原作人物介绍" },
-            { key: "storyline" as const, icon: <BookOpen className="w-4 h-4 text-muted-foreground" />, title: "原作故事主线" },
-            { key: "structure" as const, icon: <Drama className="w-4 h-4 text-muted-foreground" />, title: "原著三幕式结构分析" },
-            { key: "emotions" as const, icon: <Heart className="w-4 h-4 text-muted-foreground" />, title: "情感关系分析" },
-          ]
-          return (
+        {/* ===== PAGE: Analysis results (structured cards) ===== */}
+        {viewingStep === "analysis" && (
           <ScrollArea className="flex-1">
-            <div className="p-6 max-w-5xl mx-auto space-y-6">
-              {sections.map(s => (
-                <section key={s.key}>
-                  <div className="flex items-center gap-2 mb-2">
-                    {s.icon}
-                    <h2 className="text-sm font-semibold">{s.title}</h2>
-                  </div>
-                  <Card className="p-4">
-                    {isEd ? (
-                      <textarea
-                        value={ad[s.key]}
-                        onChange={e => updateAd(s.key, e.target.value)}
-                        className="w-full min-h-[200px] resize-y border-0 outline-none bg-transparent text-sm leading-relaxed whitespace-pre-wrap"
-                        spellCheck={false}
-                      />
-                    ) : (
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{ad[s.key]}</div>
-                    )}
-                  </Card>
-                </section>
-              ))}
+            <div className="p-6 max-w-5xl mx-auto space-y-8">
+
+              {/* 1. Characters - card grid */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="w-4 h-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold">原作人物介绍</h2>
+                  <Badge variant="outline" className="text-[10px]">{CHARACTERS.length} 人</Badge>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {CHARACTERS.map(ch => (
+                    <Card key={ch.name} className="p-4">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary shrink-0">{ch.name[0]}</div>
+                        <div>
+                          <p className="text-base font-semibold">{ch.name}</p>
+                          <p className="text-[11px] text-muted-foreground">{ch.identity}</p>
+                        </div>
+                      </div>
+                      {ch.skills && <div className="flex items-center gap-1.5 mb-1.5"><span className="text-[10px] text-primary font-medium shrink-0">技能</span><p className="text-xs text-muted-foreground">{ch.skills}</p></div>}
+                      <div className="mb-1.5"><span className="text-[10px] text-orange-600 font-medium">遭遇</span><p className="text-xs text-muted-foreground mt-0.5">{ch.encounters}</p></div>
+                      <div className="mb-1.5"><span className="text-[10px] text-blue-600 font-medium">故事线</span><p className="text-xs text-muted-foreground mt-0.5">{ch.storyline}</p></div>
+                      {ch.ending && <div><span className="text-[10px] text-green-600 font-medium">结局</span><p className="text-xs text-muted-foreground mt-0.5">{ch.ending}</p></div>}
+                    </Card>
+                  ))}
+                </div>
+              </section>
+
+              {/* 2. Storyline */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <BookOpen className="w-4 h-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold">原作故事主线</h2>
+                </div>
+                <Card className="p-4">
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{STORYLINE}</p>
+                </Card>
+              </section>
+
+              {/* 3. Three-Act Structure - act cards with sub-sections */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <Drama className="w-4 h-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold">原著三幕式结构分析</h2>
+                </div>
+                <div className="space-y-4">
+                  {STRUCTURE.map((act, ai) => (
+                    <Card key={ai} className="overflow-hidden">
+                      <div className={cn("px-4 py-2.5 border-b border-border", ai === 0 ? "bg-blue-500/10" : ai === 1 ? "bg-orange-500/10" : "bg-green-500/10")}>
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-semibold">{act.title}</h3>
+                          <span className="text-[10px] text-muted-foreground">【{act.range}】</span>
+                        </div>
+                      </div>
+                      <div className="p-4 space-y-3">
+                        {act.sections.map((s, si) => (
+                          <div key={si}>
+                            <p className="text-xs font-semibold text-foreground mb-1">{s.heading}</p>
+                            <p className="text-xs text-muted-foreground leading-relaxed">{s.content}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </section>
+
+              {/* 4. Emotions - timeline cards */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <Heart className="w-4 h-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold">情感关系分析</h2>
+                </div>
+                <div className="space-y-4">
+                  {EMOTIONS.map((em, ei) => (
+                    <Card key={ei} className="p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-sm font-semibold">{em.pair}</span>
+                        <Badge variant="secondary" className="text-[10px]">{em.type}</Badge>
+                      </div>
+                      <div className="space-y-2 mb-3">
+                        {em.acts.map((a, ai2) => (
+                          <div key={ai2} className="flex gap-3">
+                            <div className="shrink-0 w-14 text-[10px] font-medium text-primary pt-0.5">{a.act}</div>
+                            <p className="text-xs text-muted-foreground leading-relaxed">{a.content}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                        <span className="text-[10px] text-muted-foreground shrink-0">演变轨迹：</span>
+                        <p className="text-[11px] font-medium text-foreground">{em.trajectory}</p>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </section>
+
             </div>
           </ScrollArea>
-          )
-        })()}
+        )}
 
-        {/* ===== PAGE: Mapping framework (full text) ===== */}
+        {/* ===== PAGE: Mapping framework (structured) ===== */}
         {viewingStep === "mapping" && (() => {
-          const isEd = editingStep === "mapping"
+          const mf = activeVersion.mappingResult
           return (
           <ScrollArea className="flex-1">
-            <div className="p-6 max-w-5xl mx-auto">
-              <div className="flex items-center gap-2 mb-3">
-                <Map className="w-4 h-4 text-muted-foreground" />
-                <h2 className="text-sm font-semibold">映射框架</h2>
-              </div>
-              <Card className="p-5">
-                {isEd ? (
-                  <textarea
-                    value={activeVersion.mappingResult}
-                    onChange={e => updateVersion(activeVersion.id, { mappingResult: e.target.value })}
-                    className="w-full min-h-[500px] resize-y border-0 outline-none bg-transparent text-sm leading-relaxed whitespace-pre-wrap"
-                    spellCheck={false}
-                  />
-                ) : (
-                  <div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{activeVersion.mappingResult}</div>
-                )}
-              </Card>
+            <div className="p-6 max-w-5xl mx-auto space-y-8">
+
+              {/* World view comparison */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <Map className="w-4 h-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold">世界观规则转换</h2>
+                </div>
+                <Card className="p-4">
+                  <div className="grid grid-cols-2 gap-4 mb-3">
+                    <div><p className="text-[10px] font-medium text-muted-foreground mb-1">原设定</p><p className="text-xs leading-relaxed">{mf.worldView.source}</p></div>
+                    <div><p className="text-[10px] font-medium text-primary mb-1">狼人设定</p><p className="text-xs leading-relaxed">{mf.worldView.target}</p></div>
+                  </div>
+                  <div className="pt-2 border-t border-border/50"><p className="text-[10px] text-muted-foreground"><span className="font-medium">转换理由：</span>{mf.worldView.reason}</p></div>
+                </Card>
+              </section>
+
+              {/* Character mapping - detailed cards */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="w-4 h-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold">角色转换表</h2>
+                  <Badge variant="outline" className="text-[10px]">{mf.characters.length} 人</Badge>
+                </div>
+                <div className="space-y-3">
+                  {mf.characters.map((ch, i) => (
+                    <Card key={i} className="p-4">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <span className="text-base font-semibold">{ch.source}</span>
+                          <ArrowRight className="w-4 h-4 text-primary shrink-0" />
+                          <span className="text-base font-semibold text-primary">{ch.target}</span>
+                          {ch.targetAlias && <span className="text-xs text-muted-foreground">({ch.targetAlias})</span>}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 mb-2">
+                        <div><p className="text-[10px] text-muted-foreground mb-0.5">原著身份</p><p className="text-xs">{ch.sourceRole}</p></div>
+                        <div><p className="text-[10px] text-primary mb-0.5">狼人版身份</p><p className="text-xs">{ch.targetRole}</p></div>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground"><span className="font-medium">核心特质：</span>{ch.traits}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5"><span className="font-medium">关系变化：</span>{ch.relationNote}</p>
+                    </Card>
+                  ))}
+                </div>
+              </section>
+
+              {/* Conflict mapping */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className="w-4 h-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold">关键冲突转换</h2>
+                </div>
+                <div className="space-y-3">
+                  {mf.conflicts.map((c, i) => (
+                    <Card key={i} className="p-4">
+                      <div className="grid grid-cols-[1fr_32px_1fr] gap-2 mb-2">
+                        <div><p className="text-[10px] text-muted-foreground mb-0.5">原著</p><p className="text-xs">{c.source}</p></div>
+                        <div className="flex items-center justify-center"><ArrowRight className="w-4 h-4 text-primary" /></div>
+                        <div><p className="text-[10px] text-primary mb-0.5">狼人版</p><p className="text-xs">{c.target}</p></div>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground pt-2 border-t border-border/50"><span className="font-medium">保留内容：</span>{c.preserved}</p>
+                    </Card>
+                  ))}
+                </div>
+              </section>
+
+              {/* Term mapping table */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText className="w-4 h-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold">称谓与场景转换</h2>
+                </div>
+                <Card className="overflow-hidden">
+                  <div className="grid grid-cols-[1fr_32px_1fr] text-xs">
+                    <div className="px-4 py-2 bg-muted/50 font-medium text-muted-foreground border-b border-border">原著称谓/场景</div>
+                    <div className="bg-muted/50 border-b border-border" />
+                    <div className="px-4 py-2 bg-muted/50 font-medium text-primary border-b border-border">狼人版</div>
+                    {mf.terms.map((t, i) => (
+                      <div key={i} className="contents">
+                        <div className={cn("px-4 py-1.5", i < mf.terms.length - 1 && "border-b border-border/30")}>{t.source}</div>
+                        <div className={cn("flex items-center justify-center", i < mf.terms.length - 1 && "border-b border-border/30")}><ArrowRight className="w-3 h-3 text-muted-foreground" /></div>
+                        <div className={cn("px-4 py-1.5 text-primary font-medium", i < mf.terms.length - 1 && "border-b border-border/30")}>{t.target}</div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </section>
+
+              {/* Story points */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <BookOpen className="w-4 h-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold">狼人版故事主线</h2>
+                </div>
+                <Card className="p-4 mb-3">
+                  <div className="grid grid-cols-3 gap-3 mb-3">
+                    <div><p className="text-[10px] font-medium text-muted-foreground mb-0.5">主角定位</p><p className="text-xs">{mf.coreSetup.protagonist}</p></div>
+                    <div><p className="text-[10px] font-medium text-muted-foreground mb-0.5">世界规则</p><p className="text-xs">{mf.coreSetup.worldRule}</p></div>
+                    <div><p className="text-[10px] font-medium text-muted-foreground mb-0.5">核心张力</p><p className="text-xs">{mf.coreSetup.tension}</p></div>
+                  </div>
+                </Card>
+                <div className="space-y-2">
+                  {mf.storyPoints.map((sp, i) => (
+                    <Card key={i} className="p-3 flex gap-3">
+                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">{i + 1}</div>
+                      <div><p className="text-xs font-semibold mb-0.5">{sp.title}</p><p className="text-xs text-muted-foreground">{sp.content}</p></div>
+                    </Card>
+                  ))}
+                </div>
+              </section>
+
             </div>
           </ScrollArea>
           )
