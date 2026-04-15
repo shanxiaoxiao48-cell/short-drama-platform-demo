@@ -13,6 +13,10 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { WashConfig } from "./culture-wash-dialog"
+import {
+  ANALYSIS_CHARACTERS, ANALYSIS_STRUCTURE, ANALYSIS_EMOTIONS, ANALYSIS_STORYLINE,
+  MAPPING_WOLF, MAPPING_MAFIA, WASH_WOLF, WASH_MAFIA,
+} from "./wash-mock-data"
 
 interface WashProjectDetailProps {
   projectName: string
@@ -25,13 +29,11 @@ type Phase = "idle" | "analyzing" | "analyzed" | "mapping" | "mapped" | "generat
 // Which step page to view (can differ from phase when navigating back)
 type ViewStep = "source" | "analysis" | "mapping" | "wash"
 
-interface AnalysisCharacter { name: string; role: string; traits: string; identity: string }
-interface AnalysisStoryline { act: string; range: string; summary: string }
-interface AnalysisEmotion { pair: string; type: string; arc: string }
 interface AnalysisData {
-  characters: AnalysisCharacter[]
-  storyline: AnalysisStoryline[]
-  emotions: AnalysisEmotion[]
+  characters: string    // 原作人物介绍 full text
+  structure: string     // 原著三幕式结构分析 full text
+  emotions: string      // 情感关系分析 full text
+  storyline: string     // 原作故事主线 full text
 }
 
 interface WashVersion {
@@ -41,16 +43,9 @@ interface WashVersion {
   progress: number
   washTitle: string
   analysisData: AnalysisData
-  mappingResult: MappingData
+  mappingResult: string   // full text of mapping framework
   washResult: string
   createdAt: string
-}
-
-interface MappingData {
-  worldView: { source: string; target: string }
-  characters: Array<{ source: string; target: string; sourceRole: string; targetRole: string }>
-  conflicts: Array<{ source: string; target: string }>
-  terms: Array<{ source: string; target: string }>
 }
 
 const modeLabels: Record<string, { from: string; to: string; emoji: string }> = {
@@ -62,123 +57,6 @@ const allModes = [
   { id: "period_to_mafia", label: "年代文转黑手党", emoji: "🔫" },
 ]
 
-// ===== Mock Analysis Data =====
-const mockCharacters = [
-  { name: "老祖宗", role: "主角", traits: "冷静、淡漠、超然", identity: "存活上千年的皇室老祖宗，王朝守护者" },
-  { name: "柳贵妃", role: "反派", traits: "傲慢、嫉妒、愚蠢", identity: "新晋受宠的贵妃，柳尚书之女" },
-  { name: "镇北王", role: "男配", traits: "忠诚、刚毅、果决", identity: "手握重兵的王爷，老祖宗亲手带大" },
-  { name: "皇帝", role: "配角", traits: "依赖、软弱、矛盾", identity: "当朝天子，依赖老祖宗稳固皇位" },
-  { name: "柳尚书", role: "反派", traits: "阴险、狡诈、结党营私", identity: "当朝尚书，柳贵妃之父" },
-  { name: "阿蘅", role: "配角", traits: "忠诚、善良", identity: "老祖宗的贴身宫女" },
-]
-const mockStoryline = [
-  { act: "第一幕：开端", range: "第一节-第三节", summary: "柳贵妃闯入老祖宗居所，将其误认为普通妃嫔并羞辱。老祖宗派阿蘅传话，阿蘅被拦下施以酷刑。镇北王率玄甲军赶到，当众下跪揭示身份。" },
-  { act: "第二幕：对抗", range: "第四节-第八节", summary: "老祖宗住进镇北王府。柳尚书联合文官弹劾镇北王。柳贵妃设宴下药，老祖宗百毒不侵并揭示千年身份。柳尚书以'妖女'之名逼迫皇帝。" },
-  { act: "第三幕：高潮", range: "第九节-第十节", summary: "老祖宗亲临金銮殿，陈述千年功绩，老臣含泪证实。揭露柳尚书罪行，柳家覆灭。贵妃打入冷宫后疯癫。新皇登基，拜见老祖宗。" },
-]
-const mockEmotions = [
-  { pair: "老祖宗 × 贵妃", type: "敌对/冲突", arc: "陌生敌对 → 权力逆转 → 彻底碾压 → 终极审判" },
-  { pair: "老祖宗 × 皇帝", type: "类亲情/政治庇护", arc: "幕后扶持 → 公开庇护 → 引导放手 → 永恒象征" },
-  { pair: "老祖宗 × 镇北王", type: "类亲情/师徒", arc: "长辈亲情 → 信任守护 → 温暖陪伴 → 宿命分离" },
-  { pair: "贵妃 × 皇帝", type: "宠爱/利用", arc: "受宠 → 被训斥 → 被抛弃 → 冷宫疯癫" },
-]
-
-// ===== Mock Mapping Data =====
-const wolfMapping: MappingData = {
-  worldView: {
-    source: `皇权至上，背后由不老不死的"老祖宗"作为王朝定海神针。存在皇帝、世家、权臣、王爷、后宫等势力，权力博弈围绕朝堂、宫闱和家族利益展开。`,
-    target: `狼族王庭由月冠狼王统治，整个狼族的稳定系于永生的"始祖"（The Progenitor）。王庭之下有纯血部族、支系首领和长老会，权力博弈围绕王庭、部族领地和血脉正统性展开。`,
-  },
-  characters: [
-    { source: "老祖宗", target: "始祖 (The Progenitor)", sourceRole: "存活上千年的皇室老祖宗，王朝守护者", targetRole: "狼族始祖，所有纯血狼族的源头，永生不朽" },
-    { source: "柳贵妃", target: "辛德拉 (Cinder)", sourceRole: "新晋受宠的贵妃，柳尚书之女", targetRole: "黑牙部族族长之女，狼王的受宠情妇" },
-    { source: "镇北王", target: "凯恩 (Kaelen)", sourceRole: "手握重兵的王爷", targetRole: "北境霜牙领地的Alpha领主，统帅铁卫狼群" },
-    { source: "皇帝", target: "科文 (Corvin)", sourceRole: "当朝天子", targetRole: "现任月冠狼王" },
-    { source: "柳尚书", target: "马尔科 (Malakor)", sourceRole: "当朝尚书，权臣", targetRole: "黑牙部族的Alpha族长" },
-    { source: "阿蘅", target: "海拉 (Hella)", sourceRole: "贴身宫女", targetRole: "侍奉始祖的年轻侍从" },
-  ],
-  conflicts: [
-    { source: "贵妃因争宠而羞辱殴打老祖宗", target: "辛德拉因嫉妒闯入始祖静居地，将其误认为狼王秘密情人并挑衅攻击" },
-    { source: "镇北王带兵入宫救人，被弹劾'强抢宫眷'", target: "凯恩率铁卫狼群闯入王庭核心区，被黑牙族长在长老会上审判'践踏王权'" },
-    { source: "柳贵妃设宴下药，老祖宗百毒不侵", target: "辛德拉在月宴上用'狂月草'引发狼性狂乱，始祖原始血脉免疫" },
-    { source: "柳尚书朝堂指控'妖女'，老祖宗金殿陈述功绩", target: "黑牙族长在部族盟会指控'异端'，始祖释放血脉威压，历数守护功绩" },
-  ],
-  terms: [
-    { source: "皇帝/圣上", target: "狼王/月冠狼王" }, { source: "贵妃/宠妃", target: "受宠情妇" },
-    { source: "王爷", target: "Alpha领主" }, { source: "尚书/大臣", target: "族长/长老" },
-    { source: "老祖宗", target: "始祖 (The Progenitor)" }, { source: "宫女/嬷嬷", target: "侍从/族人" },
-    { source: "皇宫/宫闱", target: "王庭/王庭核心区" }, { source: "朝堂/金銮殿", target: "长老会议厅/部族盟会" },
-    { source: "玄甲军", target: "铁卫狼群 (Ironhide Pack)" }, { source: "府/宅", target: "族府 (Clan Hold)" },
-  ],
-}
-const mafiaMapping: MappingData = {
-  worldView: { source: `皇权至上，背后由不老不死的"老祖宗"作为王朝定海神针。`, target: "20世纪意大利裔美国黑手党家族，教母是家族的隐退精神领袖，权力围绕家族忠诚与利益展开。" },
-  characters: [
-    { source: "老祖宗", target: "教母 (The Godmother)", sourceRole: "家族精神领袖", targetRole: "科莱昂家族的隐退教母" },
-    { source: "柳贵妃", target: "维多利亚", sourceRole: "新晋受宠的贵妃", targetRole: "新任教父的情妇" },
-    { source: "镇北王", target: "桑尼", sourceRole: "手握重兵的王爷", targetRole: "家族军师/执行者" },
-  ],
-  conflicts: [{ source: "宫斗争宠", target: "家族内部权力争夺" }, { source: "带兵入宫", target: "带手下闯入家族聚会" }, { source: "设宴下药", target: "在家族晚宴上下毒" }],
-  terms: [{ source: "皇帝", target: "教父 (Don)" }, { source: "贵妃", target: "情妇" }, { source: "王爷", target: "Consigliere" }, { source: "皇宫", target: "家族庄园" }],
-}
-
-// ===== Mock Wash Results =====
-const wolfWashResult = `# 我是狼族始祖，情妇欺辱我后悔疯了
-
-## 第一章
-
-月光如银，洒落在王庭禁地那座古老的石殿上。
-
-始祖靠在窗边，漫不经心地翻看着一卷泛黄的羊皮卷。千年的岁月在她身上没有留下任何痕迹，她的面容依旧如少女般年轻，只有那双眼睛深处，沉淀着看尽沧桑的淡漠。
-
-"砰——"
-
-石殿的大门被粗暴地推开，一个身着华贵皮裘的女人带着几个护卫闯了进来。
-
-"就是你？"辛德拉上下打量着始祖，嘴角勾起一抹轻蔑的弧度，"一个连部族标记都没有的野狼，也配让狼王日日来探望？"
-
-始祖连眼皮都没抬，继续翻着手中的羊皮卷。
-
-"我在跟你说话！"辛德拉一把夺过始祖手中的羊皮卷，"你这个没名没分的野狼，趁早给我滚出王庭！"
-
-始祖终于抬起了眼，看了辛德拉一眼。那目光平静得像一潭死水，却让辛德拉莫名地打了个寒颤。
-
-"你知道，"始祖的声音很轻，"上一个这样跟我说话的人，她整个部族的头颅，都被挂在了领地的界碑上。"
-
-## 第二章
-
-侍从海拉匆匆赶来，却被辛德拉的护卫拦在了门外。
-
-"放开我！我要见我家主人！"海拉拼命挣扎。
-
-辛德拉冷笑一声，示意护卫将海拉按倒在地。她走到始祖面前，利爪划过始祖的额头，留下一道浅浅的血痕。
-
-始祖伸手摸了摸额头上的血迹，看着指尖的鲜红，忽然笑了。
-
-"很好。已经很久没有人敢让我流血了。"
-
-就在这时，王庭外传来一阵整齐的脚步声，伴随着低沉的狼嚎。霜牙领主凯恩率铁卫狼群闯入王庭。
-
-他看到始祖额头上的血痕，瞳孔骤然收缩。下一秒，单膝跪地。
-
-"始祖，孙儿来迟了。"
-
-辛德拉的脸色瞬间变得惨白。`
-
-const mafiaWashResult = `# 我是家族教母，情妇欺辱我后悔疯了
-
-## 第一章
-
-曼哈顿的夜色如墨，科莱昂家族的老宅隐没在长岛的梧桐树影中。
-
-教母坐在二楼的书房里，手指轻轻摩挲着一张泛黄的照片。五十年了。
-
-"砰——"
-
-书房的门被推开，一个穿着貂皮大衣的金发女人踩着高跟鞋走了进来。
-
-"就是你？"维多利亚上下打量着教母，"一个住在阁楼里的老太婆，凭什么让迈克尔每天都来请安？"`
-
 // ===== Helpers =====
 function createVersion(modeId: string): WashVersion {
   const titles: Record<string, string> = {
@@ -189,13 +67,9 @@ function createVersion(modeId: string): WashVersion {
     id: `v_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     mode: modeId, phase: "idle", progress: 0,
     washTitle: titles[modeId] || "洗稿作品",
-    analysisData: {
-      characters: mockCharacters.map(c => ({ ...c })),
-      storyline: mockStoryline.map(s => ({ ...s })),
-      emotions: mockEmotions.map(e => ({ ...e })),
-    },
-    mappingResult: modeId === "period_to_mafia" ? JSON.parse(JSON.stringify(mafiaMapping)) : JSON.parse(JSON.stringify(wolfMapping)),
-    washResult: modeId === "period_to_mafia" ? mafiaWashResult : wolfWashResult,
+    analysisData: { characters: ANALYSIS_CHARACTERS, structure: ANALYSIS_STRUCTURE, emotions: ANALYSIS_EMOTIONS, storyline: ANALYSIS_STORYLINE },
+    mappingResult: modeId === "period_to_mafia" ? MAPPING_MAFIA : MAPPING_WOLF,
+    washResult: modeId === "period_to_mafia" ? WASH_MAFIA : WASH_WOLF,
     createdAt: new Date().toLocaleString("zh-CN"),
   }
 }
@@ -209,7 +83,6 @@ function phaseColor(p: Phase): string {
   if (["analyzed", "mapped"].includes(p)) return "text-orange-600 bg-orange-500/10 border-orange-500/30"
   return "text-muted-foreground bg-muted/50 border-border"
 }
-// Which step index the phase has reached (max completed)
 function maxStepForPhase(phase: Phase): number {
   if (["idle", "analyzing"].includes(phase)) return -1
   if (["analyzed", "mapping"].includes(phase)) return 0
@@ -316,7 +189,6 @@ export function WashProjectDetail({ projectName, config, onBack, onCreateTransla
     const mode = modeLabels[activeVersion.mode] || modeLabels.ancient_to_werewolf
     const isProcessing = ["analyzing", "mapping", "generating"].includes(activeVersion.phase)
     const progressLabel = activeVersion.phase === "analyzing" ? "正在分析原文..." : activeVersion.phase === "mapping" ? "正在生成映射框架..." : activeVersion.phase === "generating" ? "正在生成洗稿内容..." : ""
-    const mp = activeVersion.mappingResult
     const maxStep = maxStepForPhase(activeVersion.phase)
 
     const stepTabs: { key: ViewStep; label: string; minStep: number }[] = [
@@ -487,204 +359,67 @@ export function WashProjectDetail({ projectName, config, onBack, onCreateTransla
           </div>
         )}
 
-        {/* ===== PAGE: Analysis results ===== */}
+        {/* ===== PAGE: Analysis results (4 files as text sections) ===== */}
         {viewingStep === "analysis" && (() => {
           const isEd = editingStep === "analysis"
-          const inputCls = isEd ? "bg-transparent border-b border-transparent hover:border-border focus:border-primary outline-none" : "bg-transparent border-b border-transparent outline-none cursor-default"
-          const textCls = isEd ? "bg-transparent border border-transparent hover:border-border focus:border-primary outline-none resize-none rounded p-1" : "bg-transparent border border-transparent outline-none resize-none rounded p-1 cursor-default"
+          const ad = activeVersion.analysisData
+          const updateAd = (field: keyof AnalysisData, val: string) => updateVersion(activeVersion.id, { analysisData: { ...ad, [field]: val } })
+          const sections = [
+            { key: "characters" as const, icon: <Users className="w-4 h-4 text-muted-foreground" />, title: "原作人物介绍" },
+            { key: "storyline" as const, icon: <BookOpen className="w-4 h-4 text-muted-foreground" />, title: "原作故事主线" },
+            { key: "structure" as const, icon: <Drama className="w-4 h-4 text-muted-foreground" />, title: "原著三幕式结构分析" },
+            { key: "emotions" as const, icon: <Heart className="w-4 h-4 text-muted-foreground" />, title: "情感关系分析" },
+          ]
           return (
           <ScrollArea className="flex-1">
-            <div className="p-6 max-w-5xl mx-auto space-y-8">
-              {/* Characters */}
-              <section>
-                <div className="flex items-center gap-2 mb-3">
-                  <Users className="w-4 h-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold">原作人物介绍</h2>
-                  <Badge variant="outline" className="text-[10px]">{activeVersion.analysisData.characters.length} 人</Badge>
-                </div>
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                  {activeVersion.analysisData.characters.map((ch, ci) => (
-                    <Card key={ci} className="p-3 space-y-1.5">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">{ch.name[0]}</div>
-                        <input className={cn("text-sm font-medium flex-1 min-w-0", inputCls)} value={ch.name} readOnly={!isEd}
-                          onChange={e => { const d = { ...activeVersion.analysisData }; d.characters = [...d.characters]; d.characters[ci] = { ...d.characters[ci], name: e.target.value }; updateVersion(activeVersion.id, { analysisData: d }) }} />
-                        <input className={cn("text-[9px] bg-muted/50 rounded px-1.5 py-0.5 w-12 text-center", inputCls)} value={ch.role} readOnly={!isEd}
-                          onChange={e => { const d = { ...activeVersion.analysisData }; d.characters = [...d.characters]; d.characters[ci] = { ...d.characters[ci], role: e.target.value }; updateVersion(activeVersion.id, { analysisData: d }) }} />
-                      </div>
-                      <input className={cn("text-xs text-muted-foreground w-full", inputCls)} value={ch.identity} readOnly={!isEd}
-                        onChange={e => { const d = { ...activeVersion.analysisData }; d.characters = [...d.characters]; d.characters[ci] = { ...d.characters[ci], identity: e.target.value }; updateVersion(activeVersion.id, { analysisData: d }) }} />
-                      <div className="flex items-center gap-1">
-                        <span className="text-[10px] text-muted-foreground/70 shrink-0">特质：</span>
-                        <input className={cn("text-[10px] text-muted-foreground/70 flex-1", inputCls)} value={ch.traits} readOnly={!isEd}
-                          onChange={e => { const d = { ...activeVersion.analysisData }; d.characters = [...d.characters]; d.characters[ci] = { ...d.characters[ci], traits: e.target.value }; updateVersion(activeVersion.id, { analysisData: d }) }} />
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </section>
-
-              {/* Structure */}
-              <section>
-                <div className="flex items-center gap-2 mb-3">
-                  <Drama className="w-4 h-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold">三幕式结构分析</h2>
-                </div>
-                <div className="space-y-3">
-                  {activeVersion.analysisData.storyline.map((act, si) => (
-                    <Card key={si} className="p-4">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <input className={cn("text-sm font-semibold", inputCls)} value={act.act} readOnly={!isEd}
-                          onChange={e => { const d = { ...activeVersion.analysisData }; d.storyline = [...d.storyline]; d.storyline[si] = { ...d.storyline[si], act: e.target.value }; updateVersion(activeVersion.id, { analysisData: d }) }} />
-                        <span className="text-[10px] text-muted-foreground">【</span>
-                        <input className={cn("text-[10px] text-muted-foreground w-24", inputCls)} value={act.range} readOnly={!isEd}
-                          onChange={e => { const d = { ...activeVersion.analysisData }; d.storyline = [...d.storyline]; d.storyline[si] = { ...d.storyline[si], range: e.target.value }; updateVersion(activeVersion.id, { analysisData: d }) }} />
-                        <span className="text-[10px] text-muted-foreground">】</span>
-                      </div>
-                      <textarea className={cn("text-xs text-muted-foreground leading-relaxed w-full", textCls)} rows={2} value={act.summary} readOnly={!isEd}
-                        onChange={e => { const d = { ...activeVersion.analysisData }; d.storyline = [...d.storyline]; d.storyline[si] = { ...d.storyline[si], summary: e.target.value }; updateVersion(activeVersion.id, { analysisData: d }) }} />
-                    </Card>
-                  ))}
-                </div>
-              </section>
-
-              {/* Emotions */}
-              <section>
-                <div className="flex items-center gap-2 mb-3">
-                  <Heart className="w-4 h-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold">情感关系分析</h2>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {activeVersion.analysisData.emotions.map((em, ei) => (
-                    <Card key={ei} className="p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <input className={cn("text-xs font-semibold w-28", inputCls)} value={em.pair} readOnly={!isEd}
-                          onChange={e => { const d = { ...activeVersion.analysisData }; d.emotions = [...d.emotions]; d.emotions[ei] = { ...d.emotions[ei], pair: e.target.value }; updateVersion(activeVersion.id, { analysisData: d }) }} />
-                        <input className={cn("text-[9px] bg-muted/50 rounded px-1.5 py-0.5 w-24", inputCls)} value={em.type} readOnly={!isEd}
-                          onChange={e => { const d = { ...activeVersion.analysisData }; d.emotions = [...d.emotions]; d.emotions[ei] = { ...d.emotions[ei], type: e.target.value }; updateVersion(activeVersion.id, { analysisData: d }) }} />
-                      </div>
-                      <input className={cn("text-[10px] text-muted-foreground w-full", inputCls)} value={em.arc} readOnly={!isEd}
-                        onChange={e => { const d = { ...activeVersion.analysisData }; d.emotions = [...d.emotions]; d.emotions[ei] = { ...d.emotions[ei], arc: e.target.value }; updateVersion(activeVersion.id, { analysisData: d }) }} />
-                    </Card>
-                  ))}
-                </div>
-              </section>
+            <div className="p-6 max-w-5xl mx-auto space-y-6">
+              {sections.map(s => (
+                <section key={s.key}>
+                  <div className="flex items-center gap-2 mb-2">
+                    {s.icon}
+                    <h2 className="text-sm font-semibold">{s.title}</h2>
+                  </div>
+                  <Card className="p-4">
+                    {isEd ? (
+                      <textarea
+                        value={ad[s.key]}
+                        onChange={e => updateAd(s.key, e.target.value)}
+                        className="w-full min-h-[200px] resize-y border-0 outline-none bg-transparent text-sm leading-relaxed whitespace-pre-wrap"
+                        spellCheck={false}
+                      />
+                    ) : (
+                      <div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{ad[s.key]}</div>
+                    )}
+                  </Card>
+                </section>
+              ))}
             </div>
           </ScrollArea>
           )
         })()}
 
-        {/* ===== PAGE: Mapping framework ===== */}
+        {/* ===== PAGE: Mapping framework (full text) ===== */}
         {viewingStep === "mapping" && (() => {
           const isEd = editingStep === "mapping"
-          const inputCls = isEd ? "bg-transparent border-b border-transparent hover:border-border focus:border-primary outline-none" : "bg-transparent border-b border-transparent outline-none cursor-default"
-          const textCls = isEd ? "bg-transparent border border-transparent hover:border-border focus:border-primary outline-none resize-none rounded p-1" : "bg-transparent border border-transparent outline-none resize-none rounded p-1 cursor-default"
-          const updateMap = (patch: Partial<MappingData>) => { if (isEd) updateVersion(activeVersion.id, { mappingResult: { ...mp, ...patch } }) }
-          const updateChar = (i: number, field: string, val: string) => { const c = mp.characters.map((x, j) => j === i ? { ...x, [field]: val } : x); updateMap({ characters: c }) }
-          const updateConflict = (i: number, field: string, val: string) => { const c = mp.conflicts.map((x, j) => j === i ? { ...x, [field]: val } : x); updateMap({ conflicts: c }) }
-          const updateTerm = (i: number, field: string, val: string) => { const c = mp.terms.map((x, j) => j === i ? { ...x, [field]: val } : x); updateMap({ terms: c }) }
           return (
           <ScrollArea className="flex-1">
-            <div className="p-6 max-w-5xl mx-auto space-y-8">
-              {/* World view */}
-              <section>
-                <div className="flex items-center gap-2 mb-3">
-                  <Map className="w-4 h-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold">世界观转换</h2>
-                </div>
-                <Card className="p-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-[10px] text-muted-foreground mb-1 font-medium">原设定</p>
-                      <textarea className={cn("text-xs leading-relaxed w-full", textCls)} rows={3} value={mp.worldView.source} readOnly={!isEd}
-                        onChange={e => updateMap({ worldView: { ...mp.worldView, source: e.target.value } })} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-primary mb-1 font-medium">目标设定（{mode.to}）</p>
-                      <textarea className={cn("text-xs leading-relaxed w-full", textCls)} rows={3} value={mp.worldView.target} readOnly={!isEd}
-                        onChange={e => updateMap({ worldView: { ...mp.worldView, target: e.target.value } })} />
-                    </div>
-                  </div>
-                </Card>
-              </section>
-
-              {/* Character mapping */}
-              <section>
-                <div className="flex items-center gap-2 mb-3">
-                  <Users className="w-4 h-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold">角色转换表</h2>
-                  <Badge variant="outline" className="text-[10px]">{mp.characters.length} 人</Badge>
-                </div>
-                <Card className="overflow-hidden">
-                  <div className="grid grid-cols-[1fr_28px_1fr] text-xs">
-                    <div className="px-4 py-2 bg-muted/50 font-medium text-muted-foreground border-b border-border">原著角色</div>
-                    <div className="bg-muted/50 border-b border-border" />
-                    <div className="px-4 py-2 bg-muted/50 font-medium text-primary border-b border-border">{mode.to}版角色</div>
-                    {mp.characters.map((ch, i) => (
-                      <div key={i} className="contents">
-                        <div className={cn("px-4 py-2", i < mp.characters.length - 1 && "border-b border-border/50")}>
-                          <input className={cn("font-medium w-full", inputCls)} value={ch.source} readOnly={!isEd} onChange={e => updateChar(i, "source", e.target.value)} />
-                          <input className={cn("text-[10px] text-muted-foreground mt-0.5 w-full", inputCls)} value={ch.sourceRole} readOnly={!isEd} onChange={e => updateChar(i, "sourceRole", e.target.value)} />
-                        </div>
-                        <div className={cn("flex items-center justify-center", i < mp.characters.length - 1 && "border-b border-border/50")}>
-                          <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />
-                        </div>
-                        <div className={cn("px-4 py-2", i < mp.characters.length - 1 && "border-b border-border/50")}>
-                          <input className={cn("font-medium text-primary w-full", inputCls)} value={ch.target} readOnly={!isEd} onChange={e => updateChar(i, "target", e.target.value)} />
-                          <input className={cn("text-[10px] text-muted-foreground mt-0.5 w-full", inputCls)} value={ch.targetRole} readOnly={!isEd} onChange={e => updateChar(i, "targetRole", e.target.value)} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              </section>
-
-              {/* Conflict mapping */}
-              <section>
-                <div className="flex items-center gap-2 mb-3">
-                  <Sparkles className="w-4 h-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold">关键冲突转换</h2>
-                </div>
-                <div className="space-y-2">
-                  {mp.conflicts.map((c, i) => (
-                    <Card key={i} className="p-3">
-                      <div className="grid grid-cols-[1fr_28px_1fr] items-center gap-2">
-                        <input className={cn("text-xs w-full", inputCls)} value={c.source} readOnly={!isEd} onChange={e => updateConflict(i, "source", e.target.value)} />
-                        <ArrowRight className="w-3.5 h-3.5 text-muted-foreground mx-auto" />
-                        <input className={cn("text-xs text-primary w-full", inputCls)} value={c.target} readOnly={!isEd} onChange={e => updateConflict(i, "target", e.target.value)} />
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </section>
-
-              {/* Term mapping */}
-              <section>
-                <div className="flex items-center gap-2 mb-3">
-                  <FileText className="w-4 h-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold">称谓与场景转换</h2>
-                </div>
-                <Card className="overflow-hidden">
-                  <div className="grid grid-cols-[1fr_28px_1fr] text-xs">
-                    <div className="px-4 py-1.5 bg-muted/50 font-medium text-muted-foreground border-b border-border">原著</div>
-                    <div className="bg-muted/50 border-b border-border" />
-                    <div className="px-4 py-1.5 bg-muted/50 font-medium text-primary border-b border-border">{mode.to}版</div>
-                    {mp.terms.map((t, i) => (
-                      <div key={i} className="contents">
-                        <div className={cn("px-4 py-1", i < mp.terms.length - 1 && "border-b border-border/30")}>
-                          <input className={cn("w-full", inputCls)} value={t.source} readOnly={!isEd} onChange={e => updateTerm(i, "source", e.target.value)} />
-                        </div>
-                        <div className={cn("flex items-center justify-center", i < mp.terms.length - 1 && "border-b border-border/30")}>
-                          <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                        </div>
-                        <div className={cn("px-4 py-1 text-primary", i < mp.terms.length - 1 && "border-b border-border/30")}>
-                          <input className={cn("text-primary w-full", inputCls)} value={t.target} readOnly={!isEd} onChange={e => updateTerm(i, "target", e.target.value)} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              </section>
+            <div className="p-6 max-w-5xl mx-auto">
+              <div className="flex items-center gap-2 mb-3">
+                <Map className="w-4 h-4 text-muted-foreground" />
+                <h2 className="text-sm font-semibold">映射框架</h2>
+              </div>
+              <Card className="p-5">
+                {isEd ? (
+                  <textarea
+                    value={activeVersion.mappingResult}
+                    onChange={e => updateVersion(activeVersion.id, { mappingResult: e.target.value })}
+                    className="w-full min-h-[500px] resize-y border-0 outline-none bg-transparent text-sm leading-relaxed whitespace-pre-wrap"
+                    spellCheck={false}
+                  />
+                ) : (
+                  <div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{activeVersion.mappingResult}</div>
+                )}
+              </Card>
             </div>
           </ScrollArea>
           )
